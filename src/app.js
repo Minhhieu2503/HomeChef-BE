@@ -16,13 +16,19 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Cho phép các request không có Origin (như ứng dụng mobile native hoặc postman)
+    // 1. Cho phép không có Origin (như ứng dụng mobile native thuần túy hoặc Postman)
     if (!origin) return callback(null, true);
     
-    // Kiểm tra Origin có nằm trong danh sách cho phép không
-    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes("*")) {
+    // 2. Cho phép mọi biến thể của Localhost và Capacitor (gồm http, https, cổng bất kỳ)
+    const isAppOrigin = origin.includes("localhost") || origin.startsWith("capacitor://");
+    
+    // 3. Cho phép đường dẫn Production của Frontend (nếu có)
+    const isAllowedClient = process.env.CLIENT_URL && origin === process.env.CLIENT_URL;
+    
+    if (isAppOrigin || isAllowedClient || allowedOrigins.includes("*")) {
       return callback(null, true);
     } else {
+      // Trả về lỗi nhưng không crash app, chỉ trả về 403 cho Browser
       return callback(new Error("Not allowed by CORS"), false);
     }
   },

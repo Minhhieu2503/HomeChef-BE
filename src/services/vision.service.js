@@ -1,4 +1,6 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// Khởi tạo AI - ép sử dụng phiên bản API v1 (Stable)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const detectLabels = async (imageBuffer) => {
@@ -6,13 +8,15 @@ const detectLabels = async (imageBuffer) => {
     throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  // Thử mô hình Pro Vision với đường dẫn cũ (Đôi khi Server ở EU vẫn chạy được bản này)
-  const modelName = "gemini-pro-vision";
-  
   try {
-    console.log(`[AI] Đang thử mô hình tương thích cao: ${modelName}`);
-    const model = genAI.getGenerativeModel({ model: modelName });
+    console.log("[AI] Đang gọi Google AI v1 (Stable)...");
     
+    // Sử dụng mã định danh mô hình chính xác nhất cho bản Stable
+    const model = genAI.getGenerativeModel(
+      { model: "gemini-1.5-flash" },
+      { apiVersion: "v1" } // Ép dùng v1 thay vì v1beta
+    );
+
     const prompt = `Return a JSON object of food items found in this image. 
     Rules: Extract name (VN), quantity (num), unit, emoji, category (Meat|Vegetable|Fruit|Dairy|Spice|Other). If bill, food only.
     Output JSON format: {"type":"food_image","ingredients":[{"name":"..","quantity":0,"unit":"..","emoji":"..","category":".."}]}`;
@@ -28,21 +32,33 @@ const detectLabels = async (imageBuffer) => {
     ]);
 
     const response = await result.response;
-    return JSON.parse(response.text().match(/\{[\s\S]*\}/)[0]);
-  } catch (error) {
-    console.error(`[AI] Thất bại với ${modelName}, đang thử Flash 1.5 làm dự phòng...`);
+    let text = response.text();
     
-    try {
-      const flashModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-      const result = await flashModel.generateContent([
-        "Phân tích ảnh này và trả về JSON nguyên liệu: {\"ingredients\":[{\"name\":\"..\"}]}",
-        { inlineData: { data: imageBuffer.toString("base64"), mimeType: "image/jpeg" } }
-      ]);
-      const response = await result.response;
-      return JSON.parse(response.text().match(/\{[\s\S]*\}/)[0]);
-    } catch (flashError) {
-      throw new Error(`Google AI từ chối kết nối từ Server của bạn (Lỗi: ${flashError.message}). Gợi ý: Hãy tạo lại Service trên Render và chọn vùng 'Oregon (US West)' nhé!`);
+    // Trích xuất JSON từ phản hồi
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) text = jsonMatch[0];
+    
+    console.log("[AI] Phân tích thành công.");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("[AI ERROR]:", error.message);
+    
+    // Nếu vẫn lỗi 404, thử mô hình pro-vision (bản cũ nhưng ổn định ở một số vùng)
+    if (error.message.includes("404")) {
+      try {
+        console.log("[AI] Thử lại với mô hình pro-vision...");
+        const oldModel = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+        const result = await oldModel.generateContent([
+          "Extract food as JSON: {\"ingredients\":[{\"name\":\"..\"}]}",
+          { inlineData: { data: imageBuffer.toString("base64"), mimeType: "image/jpeg" } }
+        ]);
+        const response = await result.response;
+        return JSON.parse(response.text().match(/\{[\s\S]*\}/)[0]);
+      } catch (e) {
+        throw new Error(`Google AI vẫn chưa sẵn sàng cho Server này (Lỗi: ${error.message}). Bạn hãy kiểm tra lại mã API Key trên AI Studio xem đã được kích hoạt 'Pay-as-you-go' chưa nhé (miễn phí vẫn dùng được).`);
+      }
     }
+    throw error;
   }
 };
 

@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const pantryController = require("../controllers/pantry.controller");
+const authMiddleware = require("../middleware/auth.middleware");
+
+router.use(authMiddleware);
 
 router.route("/")
   .get(pantryController.getAll)

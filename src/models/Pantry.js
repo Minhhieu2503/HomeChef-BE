@@ -1,6 +1,11 @@
 const mongoose = require("mongoose");
 
 const pantrySchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
   name: {
     type: String,
     required: [true, "Item name is required"],
@@ -8,8 +13,8 @@ const pantrySchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ["Fridge", "Pantry", "Freezer", "Spices", "Other"],
-    default: "Pantry",
+    enum: ["Fridge", "Pantry", "Freezer", "Spices", "Other", "Meat", "Vegetable", "Fruit", "Dairy", "Spice"],
+    default: "Other",
   },
   quantity: {
     type: Number,

@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    status: {
+      type: String,
+      enum: ["active", "locked"],
+      default: "active",
+    },
     dietaryPreferences: {
       type: [String],
       default: []
@@ -35,6 +40,38 @@ const userSchema = new mongoose.Schema(
     healthGoal: {
       type: String,
       default: "balanced"
+    },
+    calorieGoal: {
+      type: Number,
+      default: 2000
+    },
+    allergies: {
+      type: [String],
+      default: []
+    },
+    completedMealsCount: {
+      type: Number,
+      default: 0
+    },
+    streakDays: {
+      type: Number,
+      default: 0
+    },
+    savedRecipes: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Recipe'
+    }],
+    isPremium: {
+      type: Boolean,
+      default: false
+    },
+    premiumUsageCount: {
+      type: Number,
+      default: 0
+    },
+    premiumLimit: {
+      type: Number,
+      default: 3
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,

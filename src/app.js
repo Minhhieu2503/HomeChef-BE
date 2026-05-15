@@ -49,6 +49,8 @@ app.use("/api/pantry", require("./routes/pantry.routes"));
 app.use("/api/vision", require("./routes/vision.routes"));
 app.use("/api/shopping", require("./routes/shopping.routes"));
 app.use("/api/mealplan", require("./routes/mealplan.routes"));
+app.use("/api/admin", require("./routes/admin.routes"));
+app.use("/api/dashboard", require("./routes/dashboard.routes"));
 
 // --------------- Error Handling ---------------
 app.use(notFound);

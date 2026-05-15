@@ -24,7 +24,10 @@ exports.assignMeal = async (req, res, next) => {
 
 exports.removeMeal = async (req, res, next) => {
   try {
-    await mealPlanService.removeMeal(req.params.id);
+    const result = await mealPlanService.removeMeal(req.params.id, req.userId);
+    if (!result) {
+      return res.status(404).json({ success: false, message: "Meal plan not found or unauthorized" });
+    }
     res.json({ success: true, message: "Meal removed from plan" });
   } catch (error) {
     next(error);

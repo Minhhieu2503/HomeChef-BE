@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const shoppingController = require("../controllers/shopping.controller");
+const authMiddleware = require("../middleware/auth.middleware");
+
+router.use(authMiddleware);
 
 router.route("/")
   .get(shoppingController.getAll)

@@ -18,8 +18,8 @@ const assignMeal = async (userId, data) => {
   );
 };
 
-const removeMeal = async (id) => {
-  return await MealPlan.findByIdAndDelete(id);
+const removeMeal = async (id, userId) => {
+  return await MealPlan.findOneAndDelete({ _id: id, user: userId });
 };
 
 module.exports = {

@@ -13,4 +13,8 @@ router.get("/me", authMiddleware, authController.getMe);
 router.put("/profile", authMiddleware, authController.updateProfile);
 router.put("/avatar", authMiddleware, upload.single("avatar"), authController.uploadAvatar);
 
+router.post("/saved-recipes", authMiddleware, authController.toggleSavedRecipe);
+router.get("/saved-recipes", authMiddleware, authController.getSavedRecipes);
+router.post("/upgrade", authMiddleware, authController.upgradeToPremium);
+
 module.exports = router;

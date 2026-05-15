@@ -12,7 +12,7 @@ const mealPlanSchema = new mongoose.Schema({
   },
   slot: {
     type: String, 
-    enum: ["breakfast", "lunch", "dinner"],
+    enum: ["breakfast", "lunch", "dinner", "snack"],
     required: true,
   },
   recipe: {

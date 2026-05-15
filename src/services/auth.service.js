@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Pantry = require("../models/Pantry");
 const bcrypt = require("bcryptjs");
 const jwtUtils = require("../utils/jwt.utils");
 const sendEmail = require("../utils/email.utils");
@@ -82,7 +83,6 @@ const updateProfile = async (userId, updateData) => {
 
   if (updateData.name) user.name = updateData.name;
   if (updateData.email) {
-    // Check if new email is already used by someone else
     const existing = await User.findOne({ email: updateData.email, _id: { $ne: userId } });
     if (existing) {
       const error = new Error("Email is already in use by another account");
@@ -95,10 +95,16 @@ const updateProfile = async (userId, updateData) => {
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(updateData.password, salt);
   }
+  
+  // New fields
+  if (updateData.calorieGoal !== undefined) user.calorieGoal = updateData.calorieGoal;
+  if (updateData.dietaryPreferences) user.dietaryPreferences = updateData.dietaryPreferences;
+  if (updateData.allergies) user.allergies = updateData.allergies;
+  if (updateData.healthGoal) user.healthGoal = updateData.healthGoal;
 
   await user.save();
 
-  return { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar };
+  return user; // Return full user object without password
 };
 
 const forgotPassword = async (email) => {
@@ -243,4 +249,46 @@ const googleLogin = async (idToken) => {
   }
 };
 
-module.exports = { register, login, getMe, updateProfile, forgotPassword, resetPassword, updateAvatar, googleLogin };
+const toggleSavedRecipe = async (userId, recipeId) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const index = user.savedRecipes.indexOf(recipeId);
+  if (index > -1) {
+    user.savedRecipes.splice(index, 1);
+  } else {
+    user.savedRecipes.push(recipeId);
+  }
+
+  await user.save();
+  return user.savedRecipes;
+};
+
+const getSavedRecipes = async (userId) => {
+  const user = await User.findById(userId).populate("savedRecipes");
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+  return user.savedRecipes;
+};
+
+const upgradeToPremium = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  user.isPremium = true;
+  await user.save();
+  return user;
+};
+
+module.exports = { register, login, getMe, updateProfile, forgotPassword, resetPassword, updateAvatar, googleLogin, toggleSavedRecipe, getSavedRecipes, upgradeToPremium };

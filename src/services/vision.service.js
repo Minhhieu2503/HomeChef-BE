@@ -1,42 +1,25 @@
-const { GoogleGenAI } = require("@google/genai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const detectLabels = async (imageBuffer) => {
-  if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
-    throw new Error("GEMINI_API_KEY is not set in environment variables. Please update your .env file.");
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  
-  const prompt = `
-  You are an expert chef and image analyzer. 
-  1. Identify all the food ingredients visible in this image.
-  2. Suggest 2 delicious recipes that primarily use these ingredients.
-  
-  Respond ONLY with a valid JSON object matching this schema. Do not include markdown formatting or backticks, just the raw JSON:
-  {
-    "ingredients": [
-      { "name": "string (vietnamese)", "quantity": "string", "emoji": "string" }
-    ],
-    "recipes": [
-      {
-        "id": "string (generate a unique string like r-123)",
-        "title": "string (vietnamese)",
-        "cookTime": "number (minutes)",
-        "calories": "number (kcal)",
-        "difficulty": "string (Dễ, Trung bình, Khó)",
-        "image": "string (a realistic URL from unsplash representing the dish, e.g. https://images.unsplash.com/photo-...)",
-        "steps": [
-          { "order": 1, "instruction": "string (vietnamese step by step)" }
-        ]
-      }
-    ]
-  }
-  `;
+  // List of models to try in order of preference
+  const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-vision"];
+  let lastError;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
-      contents: [
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`Attempting vision analysis with model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      
+      const prompt = `Return a JSON object of food items found in this image. 
+      Rules: Extract name (VN), quantity (num), unit, emoji, category (Meat|Vegetable|Fruit|Dairy|Spice|Other). If bill, food only.
+      Output JSON format: {"type":"bill"|"food_image","ingredients":[{"name":"..","quantity":0,"unit":"..","emoji":"..","category":".."}]}`;
+
+      const result = await model.generateContent([
         prompt,
         {
           inlineData: {
@@ -44,21 +27,39 @@ const detectLabels = async (imageBuffer) => {
             mimeType: "image/jpeg"
           }
         }
-      ],
-      config: {
-        responseMimeType: "application/json",
+      ]);
+
+      const response = await result.response;
+      let text = response.text();
+      console.log(`Gemini ${modelName} Response:`, text);
+      
+      // Clean markdown if present
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        text = jsonMatch[0];
       }
-    });
-
-    // Clean possible surrounding markdown just in case SDK wrapper leaks backticks
-    let text = response.text || "";
-    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    throw new Error("Failed to process image with Gemini AI");
+      
+      return JSON.parse(text);
+    } catch (error) {
+      console.warn(`Model ${modelName} failed:`, error.message);
+      lastError = error;
+      // Continue to next model if it's a 404, 429 (Quota), or support error
+      if (
+        error.message.includes("404") || 
+        error.message.includes("429") || 
+        error.message.includes("not supported") ||
+        error.message.includes("Quota")
+      ) {
+        continue;
+      } else {
+        // If it's a different error (like invalid API Key), break early
+        break;
+      }
+    }
   }
+
+  console.error("All Gemini models failed. Last error:", lastError);
+  throw new Error(lastError ? lastError.message : "Failed to process image with Gemini AI");
 };
 
 module.exports = {

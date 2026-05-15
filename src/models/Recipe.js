@@ -21,6 +21,8 @@ const recipeSchema = new mongoose.Schema(
       {
         order: { type: Number, required: true },
         instruction: { type: String, required: true },
+        image: { type: String, default: "" },
+        video: { type: String, default: "" },
       },
     ],
     image: {
@@ -37,13 +39,31 @@ const recipeSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["appetizer", "main", "dessert", "drink", "snack", "other"],
+      enum: ["appetizer", "main", "dessert", "drink", "snack", "breakfast", "soup", "salad", "vegetarian", "healthy", "other"],
       default: "other",
     },
+    difficulty: {
+      type: String,
+      enum: ["Easy", "Medium", "Hard"],
+      default: "Medium",
+    },
+    dietaryTags: {
+      type: [String],
+      default: [],
+    },
+    calories: { type: Number, default: 0 },
+    protein: { type: Number, default: 0 }, // in grams
+    fat: { type: Number, default: 0 },     // in grams
+    carbs: { type: Number, default: 0 },   // in grams
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    status: {
+      type: String,
+      enum: ["pending", "approved", "rejected"],
+      default: "approved",
     },
   },
   {

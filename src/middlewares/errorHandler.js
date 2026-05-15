@@ -11,7 +11,7 @@ const notFound = (req, res, next) => {
  * Global error handler
  */
 const errorHandler = (err, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  const statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
 
   console.error(`❌ ${err.message}`);
   if (process.env.NODE_ENV === "development") {

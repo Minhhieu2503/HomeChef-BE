@@ -128,4 +128,44 @@ const googleLogin = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe, updateProfile, forgotPassword, resetPassword, uploadAvatar, googleLogin };
+const toggleSavedRecipe = async (req, res, next) => {
+  try {
+    const { recipeId } = req.body;
+    const result = await authService.toggleSavedRecipe(req.userId, recipeId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const getSavedRecipes = async (req, res, next) => {
+  try {
+    const result = await authService.getSavedRecipes(req.userId);
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const upgradeToPremium = async (req, res, next) => {
+  try {
+    const user = await authService.upgradeToPremium(req.userId);
+    res.json({ success: true, message: "Chúc mừng! Bạn đã nâng cấp lên tài khoản Premium thành công.", data: user });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { 
+  register, 
+  login, 
+  getMe, 
+  updateProfile, 
+  forgotPassword, 
+  resetPassword, 
+  uploadAvatar, 
+  googleLogin,
+  toggleSavedRecipe,
+  getSavedRecipes,
+  upgradeToPremium
+};

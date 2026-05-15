@@ -72,36 +72,39 @@ const vnpayReturn = async (req, res, next) => {
     const hmac = crypto.createHmac("sha512", secretKey);
     const signed = hmac.update(Buffer.from(signData, "utf-8")).digest("hex");
 
+    console.log("--- VNPay Callback Debug ---");
+    console.log("OrderId:", vnp_Params["vnp_TxnRef"]);
+    console.log("Match:", secureHash === signed);
+
     if (secureHash === signed) {
       const orderId = vnp_Params["vnp_TxnRef"];
       const responseCode = vnp_Params["vnp_ResponseCode"];
       const transactionNo = vnp_Params["vnp_TransactionNo"];
 
-      const transaction = await Transaction.findOne({ orderId });
-      if (transaction) {
-        if (responseCode === "00") {
-          // Success
-          transaction.status = "success";
-          transaction.vnp_TransactionNo = transactionNo;
-          transaction.vnp_ResponseCode = responseCode;
-          transaction.paymentDate = new Date();
-          await transaction.save();
+      if (responseCode === "00") {
+        const updatedTransaction = await Transaction.findOneAndUpdate(
+          { orderId },
+          { 
+            status: "success",
+            vnp_TransactionNo: transactionNo,
+            vnp_ResponseCode: responseCode,
+            paymentDate: new Date()
+          },
+          { new: true }
+        );
 
-          // Upgrade user to Premium
-          await User.findByIdAndUpdate(transaction.user, { isPremium: true });
-          
+        if (updatedTransaction) {
+          await User.findByIdAndUpdate(updatedTransaction.user, { isPremium: true });
           res.json({ success: true, message: "Thanh toán thành công" });
         } else {
-          // Failed
-          transaction.status = "failed";
-          transaction.vnp_ResponseCode = responseCode;
-          await transaction.save();
-          res.json({ success: false, message: "Thanh toán thất bại" });
+          res.status(404).json({ success: false, message: "Transaction not found" });
         }
       } else {
-        res.status(404).json({ success: false, message: "Transaction not found" });
+        await Transaction.findOneAndUpdate({ orderId }, { status: "failed", vnp_ResponseCode: responseCode });
+        res.json({ success: false, message: "Thanh toán thất bại" });
       }
     } else {
+      console.error("Hash Mismatch!");
       res.status(400).json({ success: false, message: "Invalid signature" });
     }
   } catch (error) {

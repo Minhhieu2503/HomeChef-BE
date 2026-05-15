@@ -23,4 +23,7 @@ router.put("/recipes/:id", adminController.updateRecipe);
 router.put("/recipes/:id/status", adminController.updateRecipeStatus);
 router.delete("/recipes/:id", adminController.deleteRecipe);
 
+// Payment management
+router.get("/payments", adminController.getAllTransactions);
+
 module.exports = router;

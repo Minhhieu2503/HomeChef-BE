@@ -64,39 +64,106 @@ const remove = async (id) => {
   return recipe;
 };
 
-// --- Added Recommendation logic ---
+// --- Enhanced Vietnamese-aware Recommendation logic ---
 const Pantry = require("../models/Pantry");
+
+/**
+ * Chuẩn hóa tên nguyên liệu tiếng Việt để so sánh tốt hơn
+ * - Chuyển lowercase
+ * - Loại bỏ các từ phụ (sơ chế, băm, thái...)
+ * - Tách tên ghép (ví dụ: "Tỏi, ớt" → ["tỏi", "ớt"])
+ */
+const normalizeIngredient = (name) => {
+  const removeWords = [
+    "tươi", "khô", "non", "chín", "sạch", "thái", "băm", "cắt", "xay",
+    "lát", "miếng", "bó", "gói", "hộp", "chai", "lon", "quả", "củ", "cây",
+    "sợi", "viên", "hoặc", "và", "mỗi loại", "đập dập", "rửa sạch"
+  ];
+  
+  let normalized = name.toLowerCase().trim();
+  
+  // Tách tên ghép bởi dấu phẩy, "/", "hoặc"
+  const parts = normalized.split(/[,\/]/).map(p => p.trim()).filter(p => p.length > 0);
+  
+  return parts.map(part => {
+    // Loại bỏ các từ phụ
+    removeWords.forEach(w => {
+      part = part.replace(new RegExp(`\\b${w}\\b`, 'gi'), '').trim();
+    });
+    // Loại bỏ khoảng trắng dư thừa
+    return part.replace(/\s+/g, ' ').trim();
+  }).filter(p => p.length > 1);
+};
+
+/**
+ * Kiểm tra 2 nguyên liệu có khớp nhau không (fuzzy matching tiếng Việt)
+ */
+const isIngredientMatch = (pantryName, recipeName) => {
+  const pParts = normalizeIngredient(pantryName);
+  const rParts = normalizeIngredient(recipeName);
+  
+  for (const p of pParts) {
+    for (const r of rParts) {
+      // So khớp chính xác hoặc chứa nhau
+      if (p === r) return true;
+      if (p.includes(r) || r.includes(p)) return true;
+      
+      // So khớp từ gốc (ví dụ: "cà chua bi" vs "cà chua")
+      const pWords = p.split(' ');
+      const rWords = r.split(' ');
+      const commonWords = pWords.filter(w => rWords.includes(w));
+      if (commonWords.length >= Math.min(pWords.length, rWords.length) && commonWords.length >= 1) {
+        // Nếu >= 50% từ trùng nhau → coi là khớp
+        const matchRatio = commonWords.length / Math.max(pWords.length, rWords.length);
+        if (matchRatio >= 0.5) return true;
+      }
+    }
+  }
+  return false;
+};
 
 const getRecommendations = async () => {
   // Get all available pantry ingredients
   const pantryItems = await Pantry.find();
-  const availableNames = pantryItems.map(i => i.name.toLowerCase());
+  if (pantryItems.length === 0) return [];
 
   // Get a pool of recipes
-  const allRecipes = await Recipe.find().limit(100);
+  const allRecipes = await Recipe.find().limit(200);
 
   // Calculate match scores for each recipe
   const scoredRecipes = allRecipes.map(recipe => {
-    let matchCount = 0;
+    const matchedIngredients = [];
+    const missingIngredients = [];
+
     recipe.ingredients.forEach(ing => {
-      const ingName = ing.name.toLowerCase();
-      // Check if any pantry item exists within the recipe ingredient name
-      const found = availableNames.some(pantryName => ingName.includes(pantryName) || pantryName.includes(ingName));
-      if (found) matchCount++;
+      const found = pantryItems.some(pItem => isIngredientMatch(pItem.name, ing.name));
+      if (found) {
+        matchedIngredients.push(ing.name);
+      } else {
+        missingIngredients.push(ing.name);
+      }
     });
 
     return {
       ...recipe.toObject(),
-      matchScore: matchCount,
+      matchedIngredients,
+      missingIngredients,
+      matchCount: matchedIngredients.length,
       matchPercentage: recipe.ingredients.length > 0 
-        ? Math.round((matchCount / recipe.ingredients.length) * 100)
+        ? Math.round((matchedIngredients.length / recipe.ingredients.length) * 100)
         : 0
     };
   });
 
-  // Sort by highest matched count/percentage descending
-  return scoredRecipes.sort((a, b) => b.matchPercentage - a.matchPercentage);
+  // Sort by highest matched percentage, then by match count
+  return scoredRecipes
+    .filter(r => r.matchCount > 0)
+    .sort((a, b) => {
+      if (b.matchPercentage !== a.matchPercentage) return b.matchPercentage - a.matchPercentage;
+      return b.matchCount - a.matchCount;
+    });
 };
+
 
 /**
  * Automatically deduct matching ingredients from the Pantry

@@ -1,6 +1,4 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-// Khởi tạo AI với mã API mới nhất
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const detectLabels = async (imageBuffer) => {
@@ -8,16 +6,16 @@ const detectLabels = async (imageBuffer) => {
     throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  // Sử dụng mô hình Flash 1.5 - Mô hình tối ưu nhất cho quét ảnh
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
+  // Thử mô hình Pro Vision với đường dẫn cũ (Đôi khi Server ở EU vẫn chạy được bản này)
+  const modelName = "gemini-pro-vision";
+  
   try {
-    console.log("[AI] Đang bắt đầu phân tích ảnh...");
+    console.log(`[AI] Đang thử mô hình tương thích cao: ${modelName}`);
+    const model = genAI.getGenerativeModel({ model: modelName });
     
-    const prompt = `Bạn là một chuyên gia ẩm thực. Hãy nhìn vào ảnh này và trả về một đối tượng JSON.
-    Nếu là ảnh nguyên liệu: Liệt kê các nguyên liệu thấy được.
-    Nếu là hóa đơn: Liệt kê các món ăn/nguyên liệu trong hóa đơn.
-    Định dạng JSON: {"type":"food_image","ingredients":[{"name":"tên tiếng Việt","quantity":1,"unit":"cái/kg/g","emoji":"🍎","category":"Fruit"}]}`;
+    const prompt = `Return a JSON object of food items found in this image. 
+    Rules: Extract name (VN), quantity (num), unit, emoji, category (Meat|Vegetable|Fruit|Dairy|Spice|Other). If bill, food only.
+    Output JSON format: {"type":"food_image","ingredients":[{"name":"..","quantity":0,"unit":"..","emoji":"..","category":".."}]}`;
 
     const result = await model.generateContent([
       prompt,
@@ -30,26 +28,22 @@ const detectLabels = async (imageBuffer) => {
     ]);
 
     const response = await result.response;
-    let text = response.text();
-    
-    // Làm sạch dữ liệu trả về để lấy đúng JSON
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) text = jsonMatch[0];
-    
-    console.log("[AI] Phân tích hoàn tất.");
-    return JSON.parse(text);
+    return JSON.parse(response.text().match(/\{[\s\S]*\}/)[0]);
   } catch (error) {
-    console.error("[AI LỖI CHI TIẾT]:", error);
+    console.error(`[AI] Thất bại với ${modelName}, đang thử Flash 1.5 làm dự phòng...`);
     
-    // Thông báo lỗi thân thiện cho người dùng
-    if (error.message.includes("404")) {
-      throw new Error("Lỗi 404: Google không tìm thấy mô hình AI. Hãy đảm bảo bạn đã chọn vùng (Region) phù hợp trên Render.");
+    try {
+      const flashModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const result = await flashModel.generateContent([
+        "Phân tích ảnh này và trả về JSON nguyên liệu: {\"ingredients\":[{\"name\":\"..\"}]}",
+        { inlineData: { data: imageBuffer.toString("base64"), mimeType: "image/jpeg" } }
+      ]);
+      const response = await result.response;
+      return JSON.parse(response.text().match(/\{[\s\S]*\}/)[0]);
+    } catch (flashError) {
+      throw new Error(`Google AI từ chối kết nối từ Server của bạn (Lỗi: ${flashError.message}). Gợi ý: Hãy tạo lại Service trên Render và chọn vùng 'Oregon (US West)' nhé!`);
     }
-    
-    throw new Error(`Lỗi quét ảnh: ${error.message}`);
   }
 };
 
-module.exports = {
-  detectLabels
-};
+module.exports = { detectLabels };

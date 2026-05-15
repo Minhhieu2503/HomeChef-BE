@@ -6,60 +6,51 @@ const detectLabels = async (imageBuffer) => {
     throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  // List of models to try in order of preference
-  const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-vision"];
-  let lastError;
+  // Use the latest stable and fast model
+  const modelName = "gemini-1.5-flash";
+  
+  try {
+    console.log(`Analyzing image with Google AI: ${modelName}`);
+    const model = genAI.getGenerativeModel({ model: modelName });
+    
+    const prompt = `Return a JSON object of food items found in this image. 
+    Rules: Extract name (VN), quantity (num), unit, emoji, category (Meat|Vegetable|Fruit|Dairy|Spice|Other). If bill, food only.
+    Output JSON format: {"type":"bill"|"food_image","ingredients":[{"name":"..","quantity":0,"unit":"..","emoji":"..","category":".."}]}`;
 
-  for (const modelName of modelsToTry) {
-    try {
-      console.log(`Attempting vision analysis with model: ${modelName}`);
-      const model = genAI.getGenerativeModel({ model: modelName });
-      
-      const prompt = `Return a JSON object of food items found in this image. 
-      Rules: Extract name (VN), quantity (num), unit, emoji, category (Meat|Vegetable|Fruit|Dairy|Spice|Other). If bill, food only.
-      Output JSON format: {"type":"bill"|"food_image","ingredients":[{"name":"..","quantity":0,"unit":"..","emoji":"..","category":".."}]}`;
-
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: imageBuffer.toString("base64"),
-            mimeType: "image/jpeg"
-          }
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: imageBuffer.toString("base64"),
+          mimeType: "image/jpeg" // Standard for photos, works for most cases
         }
-      ]);
+      }
+    ]);
 
-      const response = await result.response;
-      let text = response.text();
-      console.log(`Gemini ${modelName} Response:`, text);
-      
-      // Clean markdown if present
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        text = jsonMatch[0];
-      }
-      
-      return JSON.parse(text);
-    } catch (error) {
-      console.warn(`Model ${modelName} failed:`, error.message);
-      lastError = error;
-      // Continue to next model if it's a 404, 429 (Quota), or support error
-      if (
-        error.message.includes("404") || 
-        error.message.includes("429") || 
-        error.message.includes("not supported") ||
-        error.message.includes("Quota")
-      ) {
-        continue;
-      } else {
-        // If it's a different error (like invalid API Key), break early
-        break;
-      }
+    const response = await result.response;
+    let text = response.text();
+    console.log(`AI Response:`, text);
+    
+    // Clean markdown if present (sometimes AI returns ```json ... ```)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      text = jsonMatch[0];
     }
+    
+    return JSON.parse(text);
+  } catch (error) {
+    console.error(`AI Analysis Error (${modelName}):`, error.message);
+    
+    // Fallback or more specific error message
+    if (error.message.includes("429")) {
+      throw new Error("Dịch vụ AI đang quá tải (Hết hạn mức miễn phí). Vui lòng thử lại sau ít phút.");
+    }
+    if (error.message.includes("404")) {
+      throw new Error("Mô hình AI không tồn tại hoặc đã bị thay thế. Vui lòng liên hệ Admin.");
+    }
+    
+    throw new Error("Không thể phân tích ảnh bằng AI: " + error.message);
   }
-
-  console.error("All Gemini models failed. Last error:", lastError);
-  throw new Error(lastError ? lastError.message : "Failed to process image with Gemini AI");
 };
 
 module.exports = {

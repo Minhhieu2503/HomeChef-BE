@@ -6,18 +6,18 @@ const detectLabels = async (imageBuffer) => {
     throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  // Sử dụng cấu hình v1 (Stable) và thử các mô hình phổ biến nhất
-  const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro"];
+  // Thử các biến thể tên mô hình Flash phổ biến nhất
+  const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro-latest"];
   let lastError;
 
   for (const modelName of modelsToTry) {
     try {
-      console.log(`[AI-DEBUG] Đang thử với v1/${modelName}`);
+      console.log(`[AI-DEBUG] Đang thử với v1beta/${modelName}`);
       
-      // Ép sử dụng apiVersion v1 để tránh lỗi 404 của bản beta
+      // Sử dụng v1beta cho các mô hình 1.5 mới
       const model = genAI.getGenerativeModel(
         { model: modelName },
-        { apiVersion: "v1" }
+        { apiVersion: "v1beta" }
       );
       
       const prompt = `Return a JSON object of food items found in this image. 
@@ -45,7 +45,6 @@ const detectLabels = async (imageBuffer) => {
       console.warn(`[AI-DEBUG] Thất bại với ${modelName}:`, error.message);
       lastError = error;
       
-      // Nếu vẫn 404, tiếp tục thử mô hình tiếp theo
       if (error.message.includes("404") || error.message.toLowerCase().includes("not found")) {
         continue;
       }
@@ -53,7 +52,7 @@ const detectLabels = async (imageBuffer) => {
     }
   }
 
-  throw new Error(`[LỖI CUỐI CÙNG] Google AI phản hồi: ${lastError.message}. Gợi ý: Hãy kiểm tra xem bạn đã bật 'Generative Language API' trong Google Cloud Console chưa.`);
+  throw new Error(`[LỖI GOOGLE] ${lastError.message}. Nếu lỗi 404 vẫn tiếp diễn, bạn hãy thử tạo một API Key mới hoàn toàn trên Google AI Studio (aistudio.google.com) nhé!`);
 };
 
 module.exports = {

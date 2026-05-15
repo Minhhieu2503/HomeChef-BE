@@ -6,51 +6,50 @@ const detectLabels = async (imageBuffer) => {
     throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  // Use the latest stable and fast model
-  const modelName = "gemini-1.5-flash";
-  
-  try {
-    console.log(`Analyzing image with Google AI: ${modelName}`);
-    const model = genAI.getGenerativeModel({ model: modelName });
-    
-    const prompt = `Return a JSON object of food items found in this image. 
-    Rules: Extract name (VN), quantity (num), unit, emoji, category (Meat|Vegetable|Fruit|Dairy|Spice|Other). If bill, food only.
-    Output JSON format: {"type":"bill"|"food_image","ingredients":[{"name":"..","quantity":0,"unit":"..","emoji":"..","category":".."}]}`;
+  // Try multiple models in case one is restricted in the server's region
+  const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision"];
+  let lastError;
 
-    const result = await model.generateContent([
-      prompt,
-      {
-        inlineData: {
-          data: imageBuffer.toString("base64"),
-          mimeType: "image/jpeg" // Standard for photos, works for most cases
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`Attempting AI analysis with model: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      
+      const prompt = `Return a JSON object of food items found in this image. 
+      Rules: Extract name (VN), quantity (num), unit, emoji, category (Meat|Vegetable|Fruit|Dairy|Spice|Other). If bill, food only.
+      Output JSON format: {"type":"bill"|"food_image","ingredients":[{"name":"..","quantity":0,"unit":"..","emoji":"..","category":".."}]}`;
+
+      const result = await model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            data: imageBuffer.toString("base64"),
+            mimeType: "image/jpeg"
+          }
         }
-      }
-    ]);
+      ]);
 
-    const response = await result.response;
-    let text = response.text();
-    console.log(`AI Response:`, text);
-    
-    // Clean markdown if present (sometimes AI returns ```json ... ```)
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      text = jsonMatch[0];
+      const response = await result.response;
+      let text = response.text();
+      
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) text = jsonMatch[0];
+      
+      return JSON.parse(text);
+    } catch (error) {
+      console.warn(`Model ${modelName} failed:`, error.message);
+      lastError = error;
+      // If it's a 404 or support error, try the next model
+      if (error.message.includes("404") || error.message.includes("not found") || error.message.includes("not supported")) {
+        continue;
+      }
+      // If it's another error (like 429), break and show it
+      break;
     }
-    
-    return JSON.parse(text);
-  } catch (error) {
-    console.error(`AI Analysis Error (${modelName}):`, error.message);
-    
-    // Fallback or more specific error message
-    if (error.message.includes("429")) {
-      throw new Error("Dịch vụ AI đang quá tải (Hết hạn mức miễn phí). Vui lòng thử lại sau ít phút.");
-    }
-    if (error.message.includes("404")) {
-      throw new Error("Mô hình AI không tồn tại hoặc đã bị thay thế. Vui lòng liên hệ Admin.");
-    }
-    
-    throw new Error("Không thể phân tích ảnh bằng AI: " + error.message);
   }
+
+  // If we get here, all tried models failed
+  throw new Error(`Lỗi AI: ${lastError.message}. Hãy kiểm tra API Key hoặc Region của Server.`);
 };
 
 module.exports = {

@@ -2,8 +2,10 @@ const express = require("express");
 const router = express.Router();
 const recipeController = require("../controllers/recipe.controller");
 
+const authMiddleware = require("../middleware/auth.middleware");
+
 router.get("/", recipeController.getAll);
-router.get("/recommended", recipeController.getRecommended);
+router.get("/recommended", authMiddleware, recipeController.getRecommended);
 router.get("/:id", recipeController.getById);
 router.post("/", recipeController.create);
 router.post("/:id/consume", recipeController.consume);

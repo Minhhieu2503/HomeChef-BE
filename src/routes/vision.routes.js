@@ -60,11 +60,17 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
       await user.save();
     }
 
+    // 3. Get Recommendations (Optional but helpful for immediate feedback)
+    const recipeService = require("../services/recipe.service");
+    const recommendations = await recipeService.getRecommendations(req.userId);
+    const topRecommendations = recommendations.slice(0, 4); // Top 4 for immediate display
+
     res.json({
       success: true,
       message: `Đã phát hiện và thêm ${savedItems.length} món vào tủ lạnh!`,
       type: result.type,
       data: savedItems,
+      recipes: topRecommendations, // Instant suggestions
       usageLeft: user.isPremium ? 'Unlimited' : (user.premiumLimit - user.premiumUsageCount)
     });
   } catch (error) {

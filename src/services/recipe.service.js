@@ -122,9 +122,10 @@ const isIngredientMatch = (pantryName, recipeName) => {
   return false;
 };
 
-const getRecommendations = async () => {
-  // Get all available pantry ingredients
-  const pantryItems = await Pantry.find();
+const getRecommendations = async (userId) => {
+  // Get all available pantry ingredients for this specific user
+  const filter = userId ? { user: userId } : {};
+  const pantryItems = await Pantry.find(filter);
   if (pantryItems.length === 0) return [];
 
   // Get a pool of recipes

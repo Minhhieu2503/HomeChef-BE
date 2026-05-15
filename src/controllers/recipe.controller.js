@@ -67,7 +67,7 @@ const remove = async (req, res, next) => {
 
 const getRecommended = async (req, res, next) => {
   try {
-    const recommendations = await recipeService.getRecommendations();
+    const recommendations = await recipeService.getRecommendations(req.userId);
     res.json({ success: true, data: recommendations });
   } catch (error) {
     next(error);

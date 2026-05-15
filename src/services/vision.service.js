@@ -6,13 +6,13 @@ const detectLabels = async (imageBuffer) => {
     throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  // Try multiple models in case one is restricted in the server's region
+  // Danh sách các mô hình hiện đại nhất để thử
   const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision"];
   let lastError;
 
   for (const modelName of modelsToTry) {
     try {
-      console.log(`Attempting AI analysis with model: ${modelName}`);
+      console.log(`[AI-DEBUG] Đang thử quét với mô hình: ${modelName}`);
       const model = genAI.getGenerativeModel({ model: modelName });
       
       const prompt = `Return a JSON object of food items found in this image. 
@@ -32,24 +32,26 @@ const detectLabels = async (imageBuffer) => {
       const response = await result.response;
       let text = response.text();
       
+      // Bóc tách JSON từ phản hồi của AI
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) text = jsonMatch[0];
       
       return JSON.parse(text);
     } catch (error) {
-      console.warn(`Model ${modelName} failed:`, error.message);
+      console.warn(`[AI-DEBUG] Mô hình ${modelName} thất bại:`, error.message);
       lastError = error;
-      // If it's a 404 or support error, try the next model
-      if (error.message.includes("404") || error.message.includes("not found") || error.message.includes("not supported")) {
+      
+      // Nếu là lỗi không tìm thấy mô hình (404), hãy thử mô hình tiếp theo
+      if (error.message.includes("404") || error.message.toLowerCase().includes("not found")) {
         continue;
       }
-      // If it's another error (like 429), break and show it
+      // Nếu là lỗi khác (như hết hạn mức 429), dừng lại và báo lỗi luôn
       break;
     }
   }
 
-  // If we get here, all tried models failed
-  throw new Error(`Lỗi AI: ${lastError.message}. Hãy kiểm tra API Key hoặc Region của Server.`);
+  // Nếu tất cả đều thất bại, trả về lỗi chi tiết nhất có thể
+  throw new Error(`[HỆ THỐNG AI MỚI] Lỗi: ${lastError.message}`);
 };
 
 module.exports = {

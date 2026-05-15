@@ -129,37 +129,31 @@ const forgotPassword = async (email) => {
 
   await user.save();
 
-  // Send email
+  // Send email in background to avoid blocking
   const message = `Mã xác nhận khôi phục mật khẩu của bạn là: ${resetToken}\nMã này có hiệu lực trong 10 phút.`;
-
-  try {
-    await sendEmail({
-      email: user.email,
-      subject: "Yêu cầu khôi phục mật khẩu - HomeChef",
-      message,
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
-          <h2 style="color: #4CAF50; text-align: center;">Khôi phục mật khẩu HomeChef</h2>
-          <p>Xin chào,</p>
-          <p>Bạn nhận được email này vì bạn (hoặc ai đó) đã yêu cầu đặt lại mật khẩu cho tài khoản của mình.</p>
-          <div style="background: #f9f9f9; padding: 15px; text-align: center; border-radius: 4px; margin: 20px 0;">
-            <span style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #333;">${resetToken}</span>
-          </div>
-          <p style="color: #666; font-size: 14px;">Mã này có hiệu lực trong 10 phút. Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
-          <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-          <p style="font-size: 12px; text-align: center; color: #888;">Đây là email tự động, vui lòng không trả lời.</p>
+  
+  sendEmail({
+    email: user.email,
+    subject: "Yêu cầu khôi phục mật khẩu - HomeChef",
+    message,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; padding: 20px; border-radius: 8px;">
+        <h2 style="color: #4CAF50; text-align: center;">Khôi phục mật khẩu HomeChef</h2>
+        <p>Xin chào,</p>
+        <p>Bạn nhận được email này vì bạn (hoặc ai đó) đã yêu cầu đặt lại mật khẩu cho tài khoản của mình.</p>
+        <div style="background: #f9f9f9; padding: 15px; text-align: center; border-radius: 4px; margin: 20px 0;">
+          <span style="font-size: 24px; font-weight: bold; letter-spacing: 4px; color: #333;">${resetToken}</span>
         </div>
-      `
-    });
-    return true;
-  } catch (err) {
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-    await user.save();
-    const error = new Error("Email could not be sent. Please try again.");
-    error.statusCode = 500;
-    throw error;
-  }
+        <p style="color: #666; font-size: 14px;">Mã này có hiệu lực trong 10 phút. Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <p style="font-size: 12px; text-align: center; color: #888;">Đây là email tự động, vui lòng không trả lời.</p>
+      </div>
+    `
+  }).catch(err => {
+    console.error("Error sending forgot password email:", err);
+  });
+
+  return true;
 };
 
 const resetPassword = async ({ email, code, newPassword }) => {

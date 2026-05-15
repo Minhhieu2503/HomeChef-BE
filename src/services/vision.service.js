@@ -1,4 +1,6 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+
+// Khởi tạo AI với mã API mới nhất
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const detectLabels = async (imageBuffer) => {
@@ -6,53 +8,46 @@ const detectLabels = async (imageBuffer) => {
     throw new Error("GEMINI_API_KEY is not set.");
   }
 
-  // Thử các biến thể tên mô hình Flash phổ biến nhất
-  const modelsToTry = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro-latest"];
-  let lastError;
+  // Sử dụng mô hình Flash 1.5 - Mô hình tối ưu nhất cho quét ảnh
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  for (const modelName of modelsToTry) {
-    try {
-      console.log(`[AI-DEBUG] Đang thử với v1beta/${modelName}`);
-      
-      // Sử dụng v1beta cho các mô hình 1.5 mới
-      const model = genAI.getGenerativeModel(
-        { model: modelName },
-        { apiVersion: "v1beta" }
-      );
-      
-      const prompt = `Return a JSON object of food items found in this image. 
-      Rules: Extract name (VN), quantity (num), unit, emoji, category (Meat|Vegetable|Fruit|Dairy|Spice|Other). If bill, food only.
-      Output JSON format: {"type":"bill"|"food_image","ingredients":[{"name":"..","quantity":0,"unit":"..","emoji":"..","category":".."}]}`;
+  try {
+    console.log("[AI] Đang bắt đầu phân tích ảnh...");
+    
+    const prompt = `Bạn là một chuyên gia ẩm thực. Hãy nhìn vào ảnh này và trả về một đối tượng JSON.
+    Nếu là ảnh nguyên liệu: Liệt kê các nguyên liệu thấy được.
+    Nếu là hóa đơn: Liệt kê các món ăn/nguyên liệu trong hóa đơn.
+    Định dạng JSON: {"type":"food_image","ingredients":[{"name":"tên tiếng Việt","quantity":1,"unit":"cái/kg/g","emoji":"🍎","category":"Fruit"}]}`;
 
-      const result = await model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: imageBuffer.toString("base64"),
-            mimeType: "image/jpeg"
-          }
+    const result = await model.generateContent([
+      prompt,
+      {
+        inlineData: {
+          data: imageBuffer.toString("base64"),
+          mimeType: "image/jpeg"
         }
-      ]);
-
-      const response = await result.response;
-      let text = response.text();
-      
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) text = jsonMatch[0];
-      
-      return JSON.parse(text);
-    } catch (error) {
-      console.warn(`[AI-DEBUG] Thất bại với ${modelName}:`, error.message);
-      lastError = error;
-      
-      if (error.message.includes("404") || error.message.toLowerCase().includes("not found")) {
-        continue;
       }
-      break;
-    }
-  }
+    ]);
 
-  throw new Error(`[LỖI GOOGLE] ${lastError.message}. Nếu lỗi 404 vẫn tiếp diễn, bạn hãy thử tạo một API Key mới hoàn toàn trên Google AI Studio (aistudio.google.com) nhé!`);
+    const response = await result.response;
+    let text = response.text();
+    
+    // Làm sạch dữ liệu trả về để lấy đúng JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) text = jsonMatch[0];
+    
+    console.log("[AI] Phân tích hoàn tất.");
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("[AI LỖI CHI TIẾT]:", error);
+    
+    // Thông báo lỗi thân thiện cho người dùng
+    if (error.message.includes("404")) {
+      throw new Error("Lỗi 404: Google không tìm thấy mô hình AI. Hãy đảm bảo bạn đã chọn vùng (Region) phù hợp trên Render.");
+    }
+    
+    throw new Error(`Lỗi quét ảnh: ${error.message}`);
+  }
 };
 
 module.exports = {

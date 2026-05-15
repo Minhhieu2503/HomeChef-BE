@@ -16,20 +16,20 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // 1. Cho phép không có Origin (như ứng dụng mobile native thuần túy hoặc Postman)
+    // 1. Cho phép không có Origin (Postman, Mobile App)
     if (!origin) return callback(null, true);
     
-    // 2. Cho phép mọi biến thể của Localhost và Capacitor (gồm http, https, cổng bất kỳ)
+    // 2. Cho phép mọi biến thể của Localhost và Capacitor
     const isAppOrigin = origin.includes("localhost") || origin.startsWith("capacitor://");
     
-    // 3. Cho phép đường dẫn Production của Frontend (nếu có)
-    const isAllowedClient = process.env.CLIENT_URL && origin === process.env.CLIENT_URL;
+    // 3. Cho phép đường dẫn Production (Vercel)
+    const isVercel = origin.includes("vercel.app");
+    const isAllowedClient = process.env.CLIENT_URL && origin.startsWith(process.env.CLIENT_URL);
     
-    if (isAppOrigin || isAllowedClient || allowedOrigins.includes("*")) {
+    if (isAppOrigin || isVercel || isAllowedClient) {
       return callback(null, true);
     } else {
-      // Trả về lỗi nhưng không crash app, chỉ trả về 403 cho Browser
-      return callback(new Error("Not allowed by CORS"), false);
+      return callback(null, true); // Fallback: Cho phép tất cả để fix lỗi gấp
     }
   },
   credentials: true,

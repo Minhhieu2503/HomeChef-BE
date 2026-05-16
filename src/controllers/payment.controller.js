@@ -14,7 +14,7 @@ const createPaymentUrl = async (req, res, next) => {
     const tmnCode = process.env.VNP_TMN_CODE;
     const secretKey = process.env.VNP_HASH_SECRET;
     let vnpUrl = process.env.VNP_URL;
-    const returnUrl = req.body.returnUrl || process.env.VNP_RETURN_URL;
+    const returnUrl = process.env.VNP_RETURN_URL;
 
     const orderId = moment(date).format("DDHHmmss");
     

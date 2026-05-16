@@ -41,11 +41,25 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
     // 2. Automatically add to Pantry if requested (or just return results)
     const savedItems = [];
     if (result.ingredients && result.ingredients.length > 0) {
+      // Helper function to map Vietnamese AI categories to English Enums
+      const mapCategory = (viCategory) => {
+        if (!viCategory) return "Other";
+        const cat = viCategory.toString().trim().toLowerCase();
+        if (cat.includes("rau")) return "Vegetable";
+        if (cat.includes("trái cây")) return "Fruit";
+        if (cat.includes("thịt") || cat.includes("hải sản")) return "Meat";
+        if (cat.includes("sữa") || cat.includes("trứng")) return "Dairy";
+        if (cat.includes("gia vị")) return "Spice";
+        if (cat.includes("ngũ cốc") || cat.includes("đồ hộp")) return "Pantry";
+        if (cat.includes("đồ uống")) return "Fridge";
+        return "Other";
+      };
+
       for (const item of result.ingredients) {
         const newItem = await Pantry.create({
           user: req.userId,
           name: item.name,
-          category: item.category || "Other",
+          category: mapCategory(item.category),
           quantity: item.quantity || 1,
           unit: item.unit || "pcs",
           emoji: item.emoji || "📦"

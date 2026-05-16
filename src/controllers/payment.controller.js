@@ -14,7 +14,7 @@ const createPaymentUrl = async (req, res, next) => {
     const tmnCode = process.env.VNP_TMN_CODE;
     const secretKey = process.env.VNP_HASH_SECRET;
     let vnpUrl = process.env.VNP_URL;
-    const returnUrl = process.env.VNP_RETURN_URL;
+    const returnUrl = process.env.VNP_RETURN_URL || "http://localhost:5173/payment-result";
 
     const orderId = moment(date).format("DDHHmmss");
     
@@ -38,7 +38,21 @@ const createPaymentUrl = async (req, res, next) => {
     vnp_Params["vnp_OrderType"] = "other";
     vnp_Params["vnp_Amount"] = amount * 100;
     vnp_Params["vnp_ReturnUrl"] = returnUrl;
-    vnp_Params["vnp_IpAddr"] = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    
+    // Normalize IP address (VNPay Sandbox often rejects IPv6 or complex IP headers)
+    let ipAddr = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    if (ipAddr && ipAddr.includes(',')) {
+      ipAddr = ipAddr.split(',')[0].trim();
+    }
+    if (ipAddr === "::1" || ipAddr === "127.0.0.1" || !ipAddr) {
+      ipAddr = "127.0.0.1";
+    }
+    // Remove IPv6 prefix if present
+    if (ipAddr.startsWith("::ffff:")) {
+      ipAddr = ipAddr.substring(7);
+    }
+    vnp_Params["vnp_IpAddr"] = ipAddr;
+    
     vnp_Params["vnp_CreateDate"] = createDate;
 
     vnp_Params = sortObject(vnp_Params);

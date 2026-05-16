@@ -45,13 +45,63 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
       const mapCategory = (viCategory) => {
         if (!viCategory) return "Other";
         const cat = viCategory.toString().trim().toLowerCase();
-        if (cat.includes("rau")) return "Vegetable";
-        if (cat.includes("trái cây")) return "Fruit";
-        if (cat.includes("thịt") || cat.includes("hải sản")) return "Meat";
-        if (cat.includes("sữa") || cat.includes("trứng")) return "Dairy";
-        if (cat.includes("gia vị")) return "Spice";
-        if (cat.includes("ngũ cốc") || cat.includes("đồ hộp")) return "Pantry";
-        if (cat.includes("đồ uống")) return "Fridge";
+        
+        // Rau củ / Vegetable
+        if (cat.includes("rau") || cat.includes("củ") || cat.includes("nấm") || 
+            cat.includes("hành") || cat.includes("tỏi") || cat.includes("ớt") || 
+            cat.includes("salad") || cat.includes("cà chua") || cat.includes("dưa leo") || 
+            cat.includes("khoai") || cat.includes("măng") || cat.includes("bắp") || cat.includes("bí")) {
+          return "Vegetable";
+        }
+        
+        // Trái cây / Fruit
+        if (cat.includes("trái") || cat.includes("quả") || cat.includes("cam") || 
+            cat.includes("táo") || cat.includes("chuối") || cat.includes("dưa hấu") || 
+            cat.includes("nho") || cat.includes("xoài") || cat.includes("dâu") || cat.includes("chanh")) {
+          return "Fruit";
+        }
+        
+        // Thịt & Hải sản / Meat (backend uses "Meat" for both)
+        if (cat.includes("thịt") || cat.includes("hải sản") || cat.includes("cá") || 
+            cat.includes("tôm") || cat.includes("cua") || cat.includes("mực") || 
+            cat.includes("gà") || cat.includes("bò") || cat.includes("heo") || cat.includes("lợn") ||
+            cat.includes("sườn") || cat.includes("xúc xích") || cat.includes("chả") || cat.includes("ngao")) {
+          return "Meat";
+        }
+        
+        // Sữa & Trứng / Dairy
+        if (cat.includes("sữa") || cat.includes("trứng") || cat.includes("phô mai") || 
+            cat.includes("cheese") || cat.includes("bơ") || cat.includes("yogurt") || cat.includes("váng sữa")) {
+          return "Dairy";
+        }
+        
+        // Gia vị / Spice
+        if (cat.includes("gia vị") || cat.includes("muối") || cat.includes("đường") || 
+            cat.includes("tiêu") || cat.includes("mắm") || cat.includes("tương") || 
+            cat.includes("dầu") || cat.includes("giấm") || cat.includes("mì chính") || 
+            cat.includes("hạt nêm") || cat.includes("sốt") || cat.includes("ngũ vị hương")) {
+          return "Spice";
+        }
+        
+        // Đồ khô, Ngũ cốc, Đồ hộp / Pantry
+        if (cat.includes("ngũ cốc") || cat.includes("đồ hộp") || cat.includes("gạo") || 
+            cat.includes("mì") || cat.includes("bún") || cat.includes("phở") || 
+            cat.includes("bột") || cat.includes("hạt") || cat.includes("đậu") || 
+            cat.includes("nui") || cat.includes("đồ khô") || cat.includes("bánh")) {
+          return "Pantry";
+        }
+        
+        // Đồ đông lạnh / Freezer
+        if (cat.includes("đông lạnh") || cat.includes("kem") || cat.includes("đá")) {
+          return "Freezer";
+        }
+        
+        // Đồ uống / Fridge
+        if (cat.includes("đồ uống") || cat.includes("nước") || cat.includes("bia") || 
+            cat.includes("rượu") || cat.includes("trà") || cat.includes("cà phê") || cat.includes("sinh tố")) {
+          return "Fridge";
+        }
+
         return "Other";
       };
 

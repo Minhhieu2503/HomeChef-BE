@@ -30,8 +30,7 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Explicitly handle OPTIONS for all routes
-app.options("*", cors());
+// CORS middleware already handles OPTIONS
 
 // Mount route modules here:
 app.use("/api/auth", require("./routes/auth.routes"));

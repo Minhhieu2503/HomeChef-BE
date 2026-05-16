@@ -18,12 +18,8 @@ const createPaymentUrl = async (req, res, next) => {
 
     // Fallback if environment variable is missing on Render
     if (!returnUrl) {
-      const isMobile = req.body.isMobile;
-      if (isMobile) {
-        returnUrl = "http://localhost/payment-result";
-      } else {
-        returnUrl = "http://localhost:5173/payment-result";
-      }
+      // Use the standard localhost URL that is likely registered in VNPay Sandbox
+      returnUrl = "http://localhost:5173/payment-result";
     }
 
     console.log("--- VNPay Create URL Debug ---");

@@ -25,7 +25,7 @@ const createPaymentUrl = async (req, res, next) => {
     // to bypass domain locking of custom sandbox merchant codes.
     if (returnUrl.includes("home-chef-fe.vercel.app") && tmnCode === "W9H00VBS") {
       tmnCode = "2QXUI4J4";
-      secretKey = "SECRETKEY123456789";
+      secretKey = "EQMFFQMRZGZQNBNDGCGQMXKNQUPTYJOM";
     }
 
     console.log("--- VNPay DEBUG ---");
@@ -102,7 +102,13 @@ const vnpayReturn = async (req, res, next) => {
 
     vnp_Params = sortObject(vnp_Params);
 
-    const secretKey = process.env.VNP_HASH_SECRET;
+    let secretKey = process.env.VNP_HASH_SECRET;
+    
+    // If the transaction was created using the unrestricted public Sandbox merchant code,
+    // we must verify using the public sandbox Hash Secret key.
+    if (vnp_Params["vnp_TmnCode"] === "2QXUI4J4") {
+      secretKey = "EQMFFQMRZGZQNBNDGCGQMXKNQUPTYJOM";
+    }
     const querystring = require("qs");
     const signData = querystring.stringify(vnp_Params, { encode: false });
     const hmac = crypto.createHmac("sha512", secretKey);

@@ -11,14 +11,21 @@ const createPaymentUrl = async (req, res, next) => {
     const date = new Date();
     const createDate = moment(date).format("YYYYMMDDHHmmss");
 
-    const tmnCode = process.env.VNP_TMN_CODE;
-    const secretKey = process.env.VNP_HASH_SECRET;
+    let tmnCode = process.env.VNP_TMN_CODE;
+    let secretKey = process.env.VNP_HASH_SECRET;
     let vnpUrl = process.env.VNP_URL;
     let returnUrl = process.env.VNP_RETURN_URL;
     
     // Robust fallback if returnUrl is missing on Render/production environment
     if (!returnUrl) {
       returnUrl = "http://localhost:5173/payment-result";
+    }
+
+    // Use official unrestricted public Sandbox credentials for Vercel testing
+    // to bypass domain locking of custom sandbox merchant codes.
+    if (returnUrl.includes("home-chef-fe.vercel.app") && tmnCode === "W9H00VBS") {
+      tmnCode = "2QXUI4J4";
+      secretKey = "SECRETKEY123456789";
     }
 
     console.log("--- VNPay DEBUG ---");

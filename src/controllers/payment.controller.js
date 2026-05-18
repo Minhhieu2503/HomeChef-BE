@@ -14,7 +14,12 @@ const createPaymentUrl = async (req, res, next) => {
     const tmnCode = process.env.VNP_TMN_CODE;
     const secretKey = process.env.VNP_HASH_SECRET;
     let vnpUrl = process.env.VNP_URL;
-    const returnUrl = process.env.VNP_RETURN_URL;
+    let returnUrl = process.env.VNP_RETURN_URL;
+    
+    // Robust fallback if returnUrl is missing on Render/production environment
+    if (!returnUrl) {
+      returnUrl = "http://localhost:5173/payment-result";
+    }
 
     console.log("--- VNPay DEBUG ---");
     console.log("TMN Code:", tmnCode);
@@ -44,18 +49,23 @@ const createPaymentUrl = async (req, res, next) => {
     vnp_Params["vnp_Amount"] = amount * 100;
     vnp_Params["vnp_ReturnUrl"] = returnUrl;
 
-    // Normalize IP address (VNPay Sandbox often rejects IPv6 or complex IP headers)
+    // Normalize IP address (VNPay Sandbox strictly requires a valid IPv4 address)
     let ipAddr = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
     if (ipAddr && ipAddr.includes(',')) {
       ipAddr = ipAddr.split(',')[0].trim();
     }
-    if (ipAddr === "::1" || ipAddr === "127.0.0.1" || !ipAddr) {
-      ipAddr = "127.0.0.1";
-    }
-    // Remove IPv6 prefix if present
-    if (ipAddr.startsWith("::ffff:")) {
+    
+    // Robust check: Ensure it is a valid IPv4, otherwise default to 127.0.0.1
+    const ipv4Regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    
+    if (ipAddr && ipAddr.startsWith("::ffff:")) {
       ipAddr = ipAddr.substring(7);
     }
+    
+    if (!ipAddr || !ipv4Regex.test(ipAddr) || ipAddr === "::1" || ipAddr === "127.0.0.1") {
+      ipAddr = "127.0.0.1";
+    }
+    
     vnp_Params["vnp_IpAddr"] = ipAddr;
 
     vnp_Params["vnp_CreateDate"] = createDate;

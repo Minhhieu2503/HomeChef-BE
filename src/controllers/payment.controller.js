@@ -10,7 +10,7 @@ const createPaymentUrl = async (req, res, next) => {
 
     const date = new Date();
     const createDate = moment(date).format("YYYYMMDDHHmmss");
-    
+
     const tmnCode = process.env.VNP_TMN_CODE;
     const secretKey = process.env.VNP_HASH_SECRET;
     let vnpUrl = process.env.VNP_URL;
@@ -22,7 +22,7 @@ const createPaymentUrl = async (req, res, next) => {
     console.log("VNP URL:", vnpUrl);
 
     const orderId = moment(date).format("DDHHmmss");
-    
+
     // Create pending transaction in DB
     await Transaction.create({
       user: userId,
@@ -43,7 +43,7 @@ const createPaymentUrl = async (req, res, next) => {
     vnp_Params["vnp_OrderType"] = "other";
     vnp_Params["vnp_Amount"] = amount * 100;
     vnp_Params["vnp_ReturnUrl"] = returnUrl;
-    
+
     // Normalize IP address (VNPay Sandbox often rejects IPv6 or complex IP headers)
     let ipAddr = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
     if (ipAddr && ipAddr.includes(',')) {
@@ -57,7 +57,7 @@ const createPaymentUrl = async (req, res, next) => {
       ipAddr = ipAddr.substring(7);
     }
     vnp_Params["vnp_IpAddr"] = ipAddr;
-    
+
     vnp_Params["vnp_CreateDate"] = createDate;
 
     vnp_Params = sortObject(vnp_Params);
@@ -107,7 +107,7 @@ const vnpayReturn = async (req, res, next) => {
       if (responseCode === "00") {
         const updatedTransaction = await Transaction.findOneAndUpdate(
           { orderId },
-          { 
+          {
             status: "success",
             vnp_TransactionNo: transactionNo,
             vnp_ResponseCode: responseCode,

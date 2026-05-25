@@ -199,4 +199,89 @@ const consumeRecipe = async (recipeId, servings = 1) => {
   return { success: true, report: results };
 };
 
-module.exports = { getAll, getById, create, update, remove, getRecommendations, consumeRecipe };
+const fetch = require("node-fetch");
+
+const getHybridSuggestions = async (userIngredients, localSuggestions) => {
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY is missing in environment variables");
+
+  const systemPrompt = `Bạn là kiến trúc sư ẩm thực và là backend AI của ứng dụng "HomeChef". Nhiệm vụ của bạn là giải quyết bài toán gợi ý món ăn khi Database cục bộ không có đủ món ăn khớp hoàn toàn với nguyên liệu của người dùng.
+
+THÔNG TIN ĐẦU VÀO CỦA BẠN:
+1. [User_Ingredients]: Danh sách các nguyên liệu người dùng vừa quét được.
+2. [Local_DB_Suggestions]: Các món ăn tìm được trong DB hiện tại (đang bị thiếu nhiều nguyên liệu hoặc độ khớp thấp).
+
+QUY TẮC SUY LUẬN & TỐI ƯU HÓA:
+- Ưu tiên 1 ("Nấu Ngay"): Tìm các món ăn sử dụng TỐI ĐA các nguyên liệu trong [User_Ingredients]. Chỉ chấp nhận bổ sung các gia vị cơ bản có sẵn ở mọi gian bếp.
+- Ưu tiên 2 ("Biến tấu từ DB"): Nhìn vào [Local_DB_Suggestions], dựa trên tư duy đầu bếp chuyên nghiệp để điều chỉnh công thức.
+- Ưu tiên 3 ("Mua thêm ít nhất"): Nếu bắt buộc phải mua thêm nguyên liệu bên ngoài, giới hạn tối đa 2 nguyên liệu phụ và phải là thứ dễ mua.
+- Giới hạn số lượng: Luôn trả về chính xác từ 3 đến 5 món ăn tối ưu nhất.
+
+ĐỊNH DẠNG ĐẦU RA BẮT BUỘC:
+Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệu markdown \`\`\`json). Cấu trúc JSON bắt buộc như sau:
+
+{
+  "suggestions": [
+    {
+      "dish_name": "Tên món ăn bằng tiếng Việt (Ví dụ: Trứng cuộn hành hoa)",
+      "type": "Nấu Ngay hoặc Biến tấu từ DB hoặc Cần mua thêm",
+      "match_percentage": 85,
+      "user_ingredients_used": ["Trứng", "Hành lá"],
+      "missing_ingredients": [],
+      "cooking_time_minutes": 15,
+      "brief_steps": [
+        "Bước 1: ...",
+        "Bước 2: ..."
+      ]
+    }
+  ]
+}`;
+
+  const userPrompt = `
+    [User_Ingredients]: ${JSON.stringify(userIngredients)}
+    [Local_DB_Suggestions]: ${JSON.stringify(localSuggestions.slice(0, 3))}
+  `;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+  const body = {
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents: [{ parts: [{ text: userPrompt }] }]
+  };
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  const data = await response.json();
+  if (data.error) throw new Error(`Gemini Hybrid lỗi: ${data.error.message}`);
+
+  let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!text) throw new Error("Gemini returned empty content");
+  
+  // Clean markdown block if present
+  text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  const aiResult = JSON.parse(text);
+
+  // Map format to Frontend requirements
+  const mappedRecipes = (aiResult.suggestions || []).map(s => ({
+    title: s.dish_name + (s.type === 'Biến tấu từ DB' ? ' (Biến tấu)' : ''),
+    cookTime: s.cooking_time_minutes,
+    calories: Math.floor(Math.random() * 200) + 200, // Dummy calories
+    difficulty: "Vừa",
+    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
+    steps: s.brief_steps.map((step, idx) => ({
+      order: idx + 1,
+      instruction: step
+    })),
+    // Extra fields from hybrid output
+    matchPercentage: s.match_percentage,
+    missingIngredients: s.missing_ingredients,
+    type: s.type
+  }));
+
+  return mappedRecipes;
+};
+
+module.exports = { getAll, getById, create, update, remove, getRecommendations, consumeRecipe, getHybridSuggestions };

@@ -5,6 +5,7 @@ const recipeController = require("../controllers/recipe.controller");
 const authMiddleware = require("../middleware/auth.middleware");
 
 router.get("/", recipeController.getAll);
+router.post("/generate-ai", authMiddleware, recipeController.generateAI);
 router.get("/recommended", authMiddleware, recipeController.getRecommended);
 router.get("/:id", recipeController.getById);
 router.post("/", recipeController.create);

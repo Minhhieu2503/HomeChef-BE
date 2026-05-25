@@ -84,4 +84,25 @@ const consume = async (req, res, next) => {
   }
 };
 
-module.exports = { getAll, getById, create, update, remove, getRecommended, consume };
+const generateAI = async (req, res, next) => {
+  try {
+    const { userIngredients } = req.body;
+    if (!userIngredients || !Array.isArray(userIngredients)) {
+      return res.status(400).json({ success: false, message: "userIngredients is required and must be an array" });
+    }
+
+    const dbRecommendations = await recipeService.getRecommendations(req.userId);
+    
+    // Call Hybrid AI
+    const hybridRecipes = await recipeService.getHybridSuggestions(userIngredients, dbRecommendations);
+    
+    // Save to DB in background
+    recipeService.saveNewRecipesToDB(hybridRecipes, req.userId).catch(e => console.error(e));
+
+    res.json({ success: true, data: hybridRecipes });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getAll, getById, create, update, remove, getRecommended, consume, generateAI };

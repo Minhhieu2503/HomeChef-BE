@@ -124,17 +124,28 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
       await user.save();
     }
 
-    // 3. Get Recommendations (Optional but helpful for immediate feedback)
+    // 3. Get Recommendations
     const recipeService = require("../services/recipe.service");
-    const recommendations = await recipeService.getRecommendations(req.userId);
-    const topRecommendations = recommendations.slice(0, 4); // Top 4 for immediate display
+    const dbRecommendations = await recipeService.getRecommendations(req.userId);
+    
+    // Combine AI generated recipes (if any) with DB recommendations
+    let finalRecipes = [];
+    if (result.recipes && Array.isArray(result.recipes) && result.recipes.length > 0) {
+      finalRecipes = [...result.recipes];
+    }
+    
+    // Add DB recipes if we don't have enough (up to 4)
+    if (finalRecipes.length < 4 && dbRecommendations.length > 0) {
+       const needed = 4 - finalRecipes.length;
+       finalRecipes = [...finalRecipes, ...dbRecommendations.slice(0, needed)];
+    }
 
     res.json({
       success: true,
       message: `Đã phát hiện và thêm ${savedItems.length} món vào tủ lạnh!`,
       type: result.type,
       data: savedItems,
-      recipes: topRecommendations, // Instant suggestions
+      recipes: finalRecipes, // Instant suggestions or AI generated
       usageLeft: user.isPremium ? 'Unlimited' : (user.premiumLimit - user.premiumUsageCount)
     });
   } catch (error) {

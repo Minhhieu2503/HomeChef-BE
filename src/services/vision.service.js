@@ -1,11 +1,25 @@
 const fetch = require("node-fetch");
 
-// Prompt yêu cầu Gemini trả kết quả tiếng Việt + emoji phù hợp
+// Prompt yêu cầu Gemini trả kết quả tiếng Việt + emoji phù hợp và sáng tạo công thức nấu ăn
 const GEMINI_PROMPT = `Hãy nhận diện tất cả nguyên liệu thực phẩm trong hình ảnh này.
-Trả về kết quả dưới dạng JSON với format sau:
+Từ những nguyên liệu nhận diện được, hãy sáng tạo ra 2 công thức nấu ăn phù hợp nhất. Nếu nguyên liệu là bộ phận cụ thể (đùi gà, ức gà, sườn non), hãy gợi ý các món tổng quát tương ứng (món gà, món sườn) để linh hoạt nhất.
+
+Trả về kết quả dưới dạng JSON với format chính xác sau:
 {
   "ingredients": [
     {"name": "Tên tiếng Việt", "quantity": 1, "unit": "đơn vị phù hợp", "emoji": "emoji phù hợp", "category": "Danh mục"}
+  ],
+  "recipes": [
+    {
+      "title": "Tên món ăn (Ví dụ: Đùi gà sốt tiêu đen)",
+      "cookTime": 25,
+      "calories": 350,
+      "difficulty": "Dễ",
+      "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
+      "steps": [
+        {"order": 1, "instruction": "Bước 1..."}
+      ]
+    }
   ]
 }
 
@@ -15,7 +29,7 @@ Quy tắc:
 - "emoji": Emoji phù hợp với từng nguyên liệu (🍅🥕🧅🥩🍗🐟🥚🧀🥛🍋🌶️🧄🥒🍆🥦🥬🍌🍎🫑🥔🌽🍄🥜🫘🍞🍚🧈🫒🥫🍯)
 - "category": Một trong các danh mục: "Rau củ", "Trái cây", "Thịt", "Hải sản", "Gia vị", "Sữa & Trứng", "Ngũ cốc", "Đồ uống", "Đồ hộp", "Khác"
 
-CHỈ trả về JSON, không giải thích thêm.`;
+CHỈ trả về JSON nguyên gốc, không dùng markdown code block, không giải thích thêm.`;
 
 // Bảng dịch Anh -> Việt + emoji cho Cloud Vision fallback
 const TRANSLATION_MAP = {

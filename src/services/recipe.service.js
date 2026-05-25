@@ -74,10 +74,11 @@ const Pantry = require("../models/Pantry");
  * - Tách tên ghép (ví dụ: "Tỏi, ớt" → ["tỏi", "ớt"])
  */
 const normalizeIngredient = (name) => {
-  const removeWords = [
+const removeWords = [
     "tươi", "khô", "non", "chín", "sạch", "thái", "băm", "cắt", "xay",
     "lát", "miếng", "bó", "gói", "hộp", "chai", "lon", "quả", "củ", "cây",
-    "sợi", "viên", "hoặc", "và", "mỗi loại", "đập dập", "rửa sạch"
+    "sợi", "viên", "hoặc", "và", "mỗi loại", "đập dập", "rửa sạch",
+    "đùi", "ức", "cánh", "chân", "phi lê", "fillet", "xương", "sụn", "thăn"
   ];
   
   let normalized = name.toLowerCase().trim();

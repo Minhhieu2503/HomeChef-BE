@@ -112,15 +112,15 @@ const TRANSLATION_MAP = {
 // Hàm dịch kết quả Cloud Vision sang tiếng Việt
 const translateToVietnamese = (englishName) => {
   const key = englishName.toLowerCase().trim();
-  
+
   // Tìm chính xác
   if (TRANSLATION_MAP[key]) return TRANSLATION_MAP[key];
-  
+
   // Tìm theo từ khóa chứa trong tên
   for (const [engKey, viData] of Object.entries(TRANSLATION_MAP)) {
     if (key.includes(engKey) || engKey.includes(key)) return viData;
   }
-  
+
   // Không tìm thấy -> trả về tên gốc với emoji mặc định
   return { name: englishName, emoji: "🥘", category: "Khác", unit: "cái" };
 };
@@ -173,10 +173,10 @@ const detectLabels = async (imageBuffer) => {
       parser: (data) => {
         if (!data.responses || !data.responses[0]) throw new Error("Invalid Cloud Vision response format");
         if (data.responses[0].error) throw new Error(`Cloud Vision API Error: ${data.responses[0].error.message}`);
-        
+
         const labels = data.responses[0].labelAnnotations || [];
         if (labels.length === 0) throw new Error("Cloud Vision found no labels");
-        
+
         return {
           ingredients: labels.map(l => {
             const vi = translateToVietnamese(l.description);

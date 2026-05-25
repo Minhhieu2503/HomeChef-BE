@@ -156,13 +156,11 @@ const getRecommendations = async (userId) => {
     };
   });
 
-  // Sort by highest matched percentage, then by match count
+  // Lọc chỉ giữ lại những món mà tủ lạnh có đủ 100% nguyên liệu (không thiếu nguyên liệu nào)
+  // Sau đó sắp xếp ưu tiên những món tận dụng được nhiều nguyên liệu nhất
   return scoredRecipes
-    .filter(r => r.matchCount > 0)
-    .sort((a, b) => {
-      if (b.matchPercentage !== a.matchPercentage) return b.matchPercentage - a.matchPercentage;
-      return b.matchCount - a.matchCount;
-    });
+    .filter(r => r.matchCount > 0 && r.missingIngredients.length === 0)
+    .sort((a, b) => b.matchCount - a.matchCount);
 };
 
 

@@ -265,23 +265,54 @@ Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệ
   const aiResult = JSON.parse(text);
 
   // Map format to Frontend requirements
-  const mappedRecipes = (aiResult.suggestions || []).map(s => ({
-    title: s.dish_name + (s.type === 'Biến tấu từ DB' ? ' (Biến tấu)' : ''),
-    cookTime: s.cooking_time_minutes,
-    calories: Math.floor(Math.random() * 200) + 200, // Dummy calories
-    difficulty: "Vừa",
-    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
-    steps: s.brief_steps.map((step, idx) => ({
-      order: idx + 1,
-      instruction: step
-    })),
-    // Extra fields from hybrid output
-    matchPercentage: s.match_percentage,
-    missingIngredients: s.missing_ingredients,
-    type: s.type
-  }));
+  const mappedRecipes = (aiResult.suggestions || []).map(s => {
+    // Merge used and missing ingredients for the DB model
+    const ingredients = [
+      ...(s.user_ingredients_used || []).map(name => ({ name, quantity: "Tùy chỉnh" })),
+      ...(s.missing_ingredients || []).map(name => ({ name, quantity: "Cần mua thêm" }))
+    ];
+
+    return {
+      title: s.dish_name + (s.type === 'Biến tấu từ DB' ? ' (Biến tấu)' : ''),
+      cookTime: s.cooking_time_minutes,
+      calories: Math.floor(Math.random() * 200) + 200, // Dummy calories
+      difficulty: "Vừa",
+      image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
+      steps: s.brief_steps.map((step, idx) => ({
+        order: idx + 1,
+        instruction: step
+      })),
+      ingredients: ingredients,
+      // Extra fields from hybrid output
+      matchPercentage: s.match_percentage,
+      missingIngredients: s.missing_ingredients,
+      type: s.type
+    };
+  });
 
   return mappedRecipes;
 };
 
-module.exports = { getAll, getById, create, update, remove, getRecommendations, consumeRecipe, getHybridSuggestions };
+const saveNewRecipesToDB = async (recipes, userId) => {
+  try {
+    for (const r of recipes) {
+      if (r.type === "Nấu Ngay" || r.type === "Biến tấu từ DB") {
+        await create({
+          title: r.title,
+          cookTime: r.cookTime,
+          calories: r.calories,
+          difficulty: r.difficulty,
+          image: r.image,
+          steps: r.steps,
+          ingredients: r.ingredients,
+          category: "other",
+          author: userId // Save under this user's ID or an admin ID
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Lỗi khi lưu công thức AI vào DB:", error);
+  }
+};
+
+module.exports = { getAll, getById, create, update, remove, getRecommendations, consumeRecipe, getHybridSuggestions, saveNewRecipesToDB };

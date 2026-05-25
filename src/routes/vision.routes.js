@@ -124,20 +124,32 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
       await user.save();
     }
 
-    // 3. Get Recommendations
+    // 3. Get Recommendations using Hybrid Logic
     const recipeService = require("../services/recipe.service");
     const dbRecommendations = await recipeService.getRecommendations(req.userId);
     
-    // Combine AI generated recipes (if any) with DB recommendations
     let finalRecipes = [];
-    if (result.recipes && Array.isArray(result.recipes) && result.recipes.length > 0) {
-      finalRecipes = [...result.recipes];
-    }
+    const bestMatchRatio = dbRecommendations.length > 0 ? (dbRecommendations[0].matchPercentage || 0) : 0;
     
-    // Add DB recipes if we don't have enough (up to 4)
-    if (finalRecipes.length < 4 && dbRecommendations.length > 0) {
-       const needed = 4 - finalRecipes.length;
-       finalRecipes = [...finalRecipes, ...dbRecommendations.slice(0, needed)];
+    if (bestMatchRatio >= 75) {
+      // Đủ tốt! Trả về kết quả từ DB luôn, không cần tốn tiền gọi Gemini
+      console.log(`[Hybrid] DB match is ${bestMatchRatio}%. Using DB suggestions.`);
+      finalRecipes = dbRecommendations.slice(0, 4);
+    } else {
+      // Gọi Hybrid AI
+      console.log(`[Hybrid] DB match is only ${bestMatchRatio}%. Calling Gemini Hybrid...`);
+      const userIngredients = savedItems.map(i => i.name);
+      try {
+        const hybridRecipes = await recipeService.getHybridSuggestions(userIngredients, dbRecommendations);
+        finalRecipes = hybridRecipes;
+        
+        // Bước 3 (Nâng cao): Lưu các công thức mới vào DB ở chế độ chạy ngầm
+        recipeService.saveNewRecipesToDB(hybridRecipes, req.userId).catch(e => console.error(e));
+        
+      } catch (aiErr) {
+        console.error("Hybrid AI failed, fallback to DB:", aiErr);
+        finalRecipes = dbRecommendations.slice(0, 4);
+      }
     }
 
     res.json({

@@ -160,6 +160,20 @@ const detectLabels = async (imageBuffer) => {
         return JSON.parse(match[0]);
       }
     },
+    // 3. Gemini 1.5 Flash (Fallback 2)
+    {
+      name: "Gemini 1.5 Flash",
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      getBody: (base64) => ({
+        contents: [{ parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
+      }),
+      parser: (data) => {
+        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 1.5 Flash returned empty content");
+        const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("Could not parse JSON from Gemini 1.5 Flash response");
+        return JSON.parse(match[0]);
+      }
+    },
     // 3. Cloud Vision (uses separate VISION_API_KEY if available) + dịch sang tiếng Việt
     {
       name: "Cloud Vision",

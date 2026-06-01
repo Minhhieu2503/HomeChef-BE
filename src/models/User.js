@@ -61,9 +61,15 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Recipe'
     }],
-    isPremium: {
-      type: Boolean,
-      default: false
+    plan: {
+      type: String,
+      enum: ["free", "premium", "family"],
+      default: "free"
+    },
+    familyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Family',
+      default: null
     },
     premiumUsageCount: {
       type: Number,
@@ -78,7 +84,13 @@ const userSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
+
+userSchema.virtual('isPremium').get(function() {
+  return this.plan === 'premium' || this.plan === 'family';
+});
 
 module.exports = mongoose.model("User", userSchema);

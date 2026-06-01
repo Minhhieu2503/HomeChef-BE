@@ -132,7 +132,35 @@ const detectLabels = async (imageBuffer) => {
   if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY is missing in environment variables");
 
   const tryAIs = [
-    // 1. Gemini 2.5 Flash (Stable, widely available)
+    // 1. Gemini 3.5 Flash (Newest, stable)
+    {
+      name: "Gemini 3.5 Flash",
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}`,
+      getBody: (base64) => ({
+        contents: [{ parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
+      }),
+      parser: (data) => {
+        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 3.5 Flash returned empty content");
+        const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("Could not parse JSON from Gemini 3.5 Flash response");
+        return JSON.parse(match[0]);
+      }
+    },
+    // 2. Gemini Flash Latest (Auto-routing)
+    {
+      name: "Gemini Flash Latest",
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
+      getBody: (base64) => ({
+        contents: [{ parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
+      }),
+      parser: (data) => {
+        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini Flash Latest returned empty content");
+        const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("Could not parse JSON from Gemini Flash Latest response");
+        return JSON.parse(match[0]);
+      }
+    },
+    // 3. Gemini 2.5 Flash
     {
       name: "Gemini 2.5 Flash",
       url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
@@ -146,7 +174,7 @@ const detectLabels = async (imageBuffer) => {
         return JSON.parse(match[0]);
       }
     },
-    // 2. Gemini 2.0 Flash (Fallback)
+    // 4. Gemini 2.0 Flash
     {
       name: "Gemini 2.0 Flash",
       url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
@@ -157,20 +185,6 @@ const detectLabels = async (imageBuffer) => {
         if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 2.0 Flash returned empty content");
         const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
         if (!match) throw new Error("Could not parse JSON from Gemini 2.0 Flash response");
-        return JSON.parse(match[0]);
-      }
-    },
-    // 3. Gemini 1.5 Flash (Fallback 2)
-    {
-      name: "Gemini 1.5 Flash",
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
-      getBody: (base64) => ({
-        contents: [{ parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
-      }),
-      parser: (data) => {
-        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 1.5 Flash returned empty content");
-        const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error("Could not parse JSON from Gemini 1.5 Flash response");
         return JSON.parse(match[0]);
       }
     },

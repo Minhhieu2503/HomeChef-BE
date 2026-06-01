@@ -76,7 +76,8 @@ const payosReturn = async (req, res, next) => {
       );
 
       if (updatedTransaction) {
-        await User.findByIdAndUpdate(updatedTransaction.user, { isPremium: true });
+        const authService = require("../services/auth.service");
+        await authService.upgradeToPremium(updatedTransaction.user, updatedTransaction.planId);
         return res.json({ success: true, message: "Thanh toán thành công (Simulated)" });
       } else {
         return res.status(404).json({ success: false, message: "Không tìm thấy giao dịch" });
@@ -98,7 +99,8 @@ const payosReturn = async (req, res, next) => {
       );
 
       if (updatedTransaction) {
-        await User.findByIdAndUpdate(updatedTransaction.user, { isPremium: true });
+        const authService = require("../services/auth.service");
+        await authService.upgradeToPremium(updatedTransaction.user, updatedTransaction.planId);
         res.json({ success: true, message: "Thanh toán thành công" });
       } else {
         res.status(404).json({ success: false, message: "Không tìm thấy giao dịch" });

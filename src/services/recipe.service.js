@@ -242,7 +242,8 @@ Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệ
     [Local_DB_Suggestions]: ${JSON.stringify(localSuggestions.slice(0, 3))}
   `;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+  // Using gemini-flash-latest to automatically route to the best available model and avoid rate limits on specific versions
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`;
   const body = {
     system_instruction: { parts: [{ text: systemPrompt }] },
     contents: [{ parts: [{ text: userPrompt }] }]

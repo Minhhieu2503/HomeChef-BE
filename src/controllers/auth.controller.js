@@ -149,8 +149,9 @@ const getSavedRecipes = async (req, res, next) => {
 
 const upgradeToPremium = async (req, res, next) => {
   try {
-    const user = await authService.upgradeToPremium(req.userId);
-    res.json({ success: true, message: "Chúc mừng! Bạn đã nâng cấp lên tài khoản Premium thành công.", data: user });
+    const planId = req.body.planId || 'premium';
+    const user = await authService.upgradeToPremium(req.userId, planId);
+    res.json({ success: true, message: `Chúc mừng! Bạn đã nâng cấp lên Gói ${planId.toUpperCase()} thành công.`, data: user });
   } catch (error) {
     next(error);
   }

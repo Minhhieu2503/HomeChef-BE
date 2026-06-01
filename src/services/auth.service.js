@@ -255,6 +255,11 @@ const toggleSavedRecipe = async (userId, recipeId) => {
   if (index > -1) {
     user.savedRecipes.splice(index, 1);
   } else {
+    if (user.plan === 'free' && user.savedRecipes.length >= 10) {
+      const error = new Error("Tài khoản Miễn Phí chỉ được lưu tối đa 10 công thức. Vui lòng nâng cấp Premium để lưu không giới hạn.");
+      error.statusCode = 403;
+      throw error;
+    }
     user.savedRecipes.push(recipeId);
   }
 
@@ -272,7 +277,9 @@ const getSavedRecipes = async (userId) => {
   return user.savedRecipes;
 };
 
-const upgradeToPremium = async (userId) => {
+const Family = require("../models/Family");
+
+const upgradeToPremium = async (userId, planId = 'premium') => {
   const user = await User.findById(userId);
   if (!user) {
     const error = new Error("User not found");
@@ -280,7 +287,17 @@ const upgradeToPremium = async (userId) => {
     throw error;
   }
 
-  user.isPremium = true;
+  user.plan = planId;
+  
+  if (planId === 'family' && !user.familyId) {
+    const newFamily = await Family.create({
+      name: `Gia đình của ${user.name}`,
+      admin: user._id,
+      members: [user._id]
+    });
+    user.familyId = newFamily._id;
+  }
+
   await user.save();
   return user;
 };

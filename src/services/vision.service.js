@@ -7,7 +7,7 @@ Từ những nguyên liệu nhận diện được, hãy sáng tạo ra 2 công 
 Trả về kết quả dưới dạng JSON với format chính xác sau:
 {
   "ingredients": [
-    {"name": "Tên tiếng Việt", "quantity": 1, "unit": "đơn vị phù hợp", "emoji": "emoji phù hợp", "category": "Danh mục"}
+    {"name": "Tên tiếng Việt", "quantity": 1, "unit": "đơn vị phù hợp", "emoji": "emoji phù hợp", "category": "Danh mục", "shelfLifeDays": 7}
   ],
   "recipes": [
     {
@@ -28,6 +28,7 @@ Quy tắc:
 - "unit": Đơn vị phù hợp (quả, kg, bó, gói, hộp, chai, lon, lát, miếng, con, bịch, trái)
 - "emoji": Emoji phù hợp với từng nguyên liệu (🍅🥕🧅🥩🍗🐟🥚🧀🥛🍋🌶️🧄🥒🍆🥦🥬🍌🍎🫑🥔🌽🍄🥜🫘🍞🍚🧈🫒🥫🍯)
 - "category": Một trong các danh mục: "Rau củ", "Trái cây", "Thịt", "Hải sản", "Gia vị", "Sữa & Trứng", "Ngũ cốc", "Đồ uống", "Đồ hộp", "Khác"
+- "shelfLifeDays": Ước lượng số ngày bảo quản an toàn trong tủ lạnh hoặc điều kiện lưu trữ phù hợp (ví dụ: thịt tươi/hải sản: 3, rau củ: 7, sữa/trứng: 10, đồ khô/gia vị: 30)
 
 CHỈ trả về JSON nguyên gốc, không dùng markdown code block, không giải thích thêm.`;
 
@@ -208,7 +209,23 @@ const detectLabels = async (imageBuffer) => {
         return {
           ingredients: labels.map(l => {
             const vi = translateToVietnamese(l.description);
-            return { name: vi.name, quantity: 1, unit: vi.unit, emoji: vi.emoji, category: vi.category };
+            let shelfLifeDays = 7;
+            const cat = vi.category;
+            if (cat === "Thịt" || cat === "Hải sản") {
+              shelfLifeDays = 3;
+            } else if (cat === "Sữa & Trứng") {
+              shelfLifeDays = 10;
+            } else if (cat === "Gia vị" || cat === "Ngũ cốc" || cat === "Đồ hộp") {
+              shelfLifeDays = 30;
+            }
+            return { 
+              name: vi.name, 
+              quantity: 1, 
+              unit: vi.unit, 
+              emoji: vi.emoji, 
+              category: vi.category,
+              shelfLifeDays: shelfLifeDays 
+            };
           })
         };
       }

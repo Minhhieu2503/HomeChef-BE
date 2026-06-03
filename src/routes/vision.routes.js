@@ -106,13 +106,17 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
       };
 
       for (const item of result.ingredients) {
+        const shelfLifeDays = Number(item.shelfLifeDays) || 7;
+        const expiryDate = new Date(Date.now() + shelfLifeDays * 24 * 60 * 60 * 1000);
+
         const newItem = await Pantry.create({
           user: req.userId,
           name: item.name,
           category: mapCategory(item.category),
           quantity: item.quantity || 1,
           unit: item.unit || "pcs",
-          emoji: item.emoji || "📦"
+          emoji: item.emoji || "📦",
+          expiryDate: expiryDate
         });
         savedItems.push(newItem);
       }
@@ -140,7 +144,7 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
       console.log(`[Hybrid] DB match is only ${bestMatchRatio}%. Calling Gemini Hybrid...`);
       const userIngredients = savedItems.map(i => i.name);
       try {
-        const hybridRecipes = await recipeService.getHybridSuggestions(userIngredients, dbRecommendations);
+        const hybridRecipes = await recipeService.getHybridSuggestions(userIngredients, dbRecommendations, req.userId);
         finalRecipes = hybridRecipes;
         
         // Bước 3 (Nâng cao): Lưu các công thức mới vào DB ở chế độ chạy ngầm

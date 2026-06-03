@@ -129,11 +129,56 @@ const getRecommendations = async (userId) => {
   const pantryItems = await Pantry.find(filter);
   if (pantryItems.length === 0) return [];
 
+  // Get user details for allergies and dietary preferences
+  const User = require("../models/User");
+  let user = null;
+  if (userId) {
+    user = await User.findById(userId);
+  }
+  const allergies = user?.allergies || [];
+  const dietaryPreferences = user?.dietaryPreferences || [];
+
   // Get a pool of recipes
   const allRecipes = await Recipe.find().limit(200);
 
+  // Helper filters
+  const containsAllergen = (recipe, allergiesList) => {
+    if (!allergiesList || allergiesList.length === 0) return false;
+    return recipe.ingredients.some(ing => {
+      const ingName = ing.name.toLowerCase();
+      return allergiesList.some(allergy => {
+        const normAllergy = allergy.toLowerCase().trim();
+        return ingName.includes(normAllergy) || normAllergy.includes(ingName);
+      });
+    });
+  };
+
+  const violatesDietaryPreferences = (recipe, preferencesList) => {
+    if (!preferencesList || preferencesList.length === 0) return false;
+    const isVegetarian = preferencesList.some(p => {
+      const lp = p.toLowerCase();
+      return lp.includes("chay") || lp.includes("vegetarian");
+    });
+    
+    if (isVegetarian) {
+      const meatWords = ["thịt", "bò", "heo", "lợn", "gà", "vịt", "sườn", "cá", "tôm", "cua", "mực", "ốc", "hải sản", "xúc xích", "chả", "pate", "lạp xưởng"];
+      return recipe.ingredients.some(ing => {
+        const name = ing.name.toLowerCase();
+        return meatWords.some(word => name.includes(word));
+      });
+    }
+    return false;
+  };
+
+  // Filter recipes based on user health profile
+  const filteredRecipes = allRecipes.filter(recipe => {
+    if (containsAllergen(recipe, allergies)) return false;
+    if (violatesDietaryPreferences(recipe, dietaryPreferences)) return false;
+    return true;
+  });
+
   // Calculate match scores for each recipe
-  const scoredRecipes = allRecipes.map(recipe => {
+  const scoredRecipes = filteredRecipes.map(recipe => {
     const matchedIngredients = [];
     const missingIngredients = [];
 
@@ -201,15 +246,25 @@ const consumeRecipe = async (recipeId, servings = 1) => {
 
 const fetch = require("node-fetch");
 
-const getHybridSuggestions = async (userIngredients, localSuggestions) => {
+const getHybridSuggestions = async (userIngredients, localSuggestions, userId) => {
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
   if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY is missing in environment variables");
+
+  const User = require("../models/User");
+  let user = null;
+  if (userId) {
+    user = await User.findById(userId);
+  }
+  const allergies = user?.allergies || [];
+  const dietaryPreferences = user?.dietaryPreferences || [];
 
   const systemPrompt = `Bạn là kiến trúc sư ẩm thực và là backend AI của ứng dụng "HomeChef". Nhiệm vụ của bạn là giải quyết bài toán gợi ý món ăn khi Database cục bộ không có đủ món ăn khớp hoàn toàn với nguyên liệu của người dùng.
 
 THÔNG TIN ĐẦU VÀO CỦA BẠN:
 1. [User_Ingredients]: Danh sách các nguyên liệu người dùng vừa quét được.
 2. [Local_DB_Suggestions]: Các món ăn tìm được trong DB hiện tại (đang bị thiếu nhiều nguyên liệu hoặc độ khớp thấp).
+3. [User_Allergies]: Danh sách các chất/nguyên liệu người dùng bị dị ứng. TUYỆT ĐỐI không được sử dụng bất cứ nguyên liệu nào chứa các chất này trong công thức gợi ý.
+4. [User_Dietary_Preferences]: Chế độ ăn uống ưu tiên của người dùng (ví dụ: Ăn chay, Keto, ít dầu mỡ...). Hãy đảm bảo toàn bộ công thức tuân thủ đúng chế độ ăn này.
 
 QUY TẮC SUY LUẬN & TỐI ƯU HÓA:
 - Ưu tiên 1 ("Nấu Ngay"): Tìm các món ăn sử dụng TỐI ĐA các nguyên liệu trong [User_Ingredients]. Chỉ chấp nhận bổ sung các gia vị cơ bản có sẵn ở mọi gian bếp.
@@ -240,6 +295,8 @@ Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệ
   const userPrompt = `
     [User_Ingredients]: ${JSON.stringify(userIngredients)}
     [Local_DB_Suggestions]: ${JSON.stringify(localSuggestions.slice(0, 3))}
+    [User_Allergies]: ${JSON.stringify(allergies)}
+    [User_Dietary_Preferences]: ${JSON.stringify(dietaryPreferences)}
   `;
 
   // Using gemini-flash-latest to automatically route to the best available model and avoid rate limits on specific versions

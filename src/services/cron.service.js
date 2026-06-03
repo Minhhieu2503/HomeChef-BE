@@ -72,6 +72,16 @@ const runExpiryCheck = async () => {
         html: htmlContent,
         message: `Chào ${user.name || 'Đầu Bếp'}, một số thực phẩm trong tủ lạnh của bạn sắp hết hạn. Vui lòng vào app kiểm tra.`
       });
+
+      // Tạo thông báo trong cơ sở dữ liệu
+      const Notification = require("../models/Notification");
+      const textMessage = `Bạn có ${items.length} thực phẩm sắp hết hạn hoặc đã hết hạn: ${items.map(i => i.name).join(", ")}.`;
+      await Notification.create({
+        user: userId,
+        title: "Cảnh báo thực phẩm sắp hết hạn! 🚨",
+        message: textMessage,
+        type: "expiry"
+      });
     }
     console.log("[Cron] Hoàn thành gửi email nhắc nhở hết hạn.");
   } catch (error) {

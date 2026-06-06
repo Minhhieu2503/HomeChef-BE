@@ -94,7 +94,7 @@ const generateAI = async (req, res, next) => {
     const dbRecommendations = await recipeService.getRecommendations(req.userId);
     
     // Call Hybrid AI
-    const hybridRecipes = await recipeService.getHybridSuggestions(userIngredients, dbRecommendations);
+    const hybridRecipes = await recipeService.getHybridSuggestions(userIngredients, dbRecommendations, req.userId);
     
     // Save to DB in background
     recipeService.saveNewRecipesToDB(hybridRecipes, req.userId).catch(e => console.error(e));

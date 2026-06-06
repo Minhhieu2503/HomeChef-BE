@@ -291,15 +291,17 @@ THÔNG TIN ĐẦU VÀO CỦA BẠN:
 3. [User_Allergies]: Danh sách các chất/nguyên liệu người dùng bị dị ứng. TUYỆT ĐỐI không được sử dụng bất cứ nguyên liệu nào chứa các chất này trong công thức gợi ý.
 4. [User_Dietary_Preferences]: Chế độ ăn uống ưu tiên của người dùng (ví dụ: Ăn chay, Keto, ít dầu mỡ...). Hãy đảm bảo toàn bộ công thức tuân thủ đúng chế độ ăn này.
 5. [User_Health_Goal]: Mục tiêu sức khỏe/cân nặng của người dùng:
-   - "giảm cân" (lose_weight): Ưu tiên gợi ý các món ít calo, ít chất béo, nhiều xơ và lành mạnh.
-   - "tăng cân" (gain_weight): Ưu tiên gợi ý các món giàu calo, giàu protein, bổ dưỡng.
-   - "cân bằng" (balanced): Đề xuất các món ăn có hàm lượng dinh dưỡng cân bằng thông thường.
+   - "lose_weight" (giảm cân): Gợi ý các món lành mạnh, ít calo (< 450 kcal), thanh đạm, ít béo.
+   - "gain_weight" (tăng cân): Gợi ý các món giàu calo (> 600 kcal), nhiều đạm (protein > 20g), bổ dưỡng.
+   - "balanced" (cân bằng): Đề xuất các món ăn có hàm lượng dinh dưỡng cân bằng thông thường (~450 - 600 kcal).
 
 QUY TẮC SUY LUẬN & TỐI ƯU HÓA:
 - Ưu tiên 1 ("Nấu Ngay"): Tìm các món ăn sử dụng TỐI ĐA các nguyên liệu trong [User_Ingredients]. Chỉ chấp nhận bổ sung các gia vị cơ bản có sẵn ở mọi gian bếp.
 - Ưu tiên 2 ("Biến tấu từ DB"): Nhìn vào [Local_DB_Suggestions], dựa trên tư duy đầu bếp chuyên nghiệp để điều chỉnh công thức.
 - Ưu tiên 3 ("Mua thêm ít nhất"): Nếu bắt buộc phải mua thêm nguyên liệu bên ngoài, giới hạn tối đa 2 nguyên liệu phụ và phải là thứ dễ mua.
 - Giới hạn số lượng: Luôn trả về chính xác từ 3 đến 5 món ăn tối ưu nhất.
+- Kiểm soát nguyên liệu: "user_ingredients_used" chỉ chứa các nguyên liệu thực sự có trong [User_Ingredients]. Bất kỳ nguyên liệu nào khác cần dùng cho món ăn (trừ các gia vị cơ bản như muối, đường, hạt nêm, tiêu, hành, tỏi, dầu ăn, nước mắm, nước tương, nước lọc) bắt buộc phải nằm trong "missing_ingredients".
+- Tính toán dinh dưỡng: Tính toán và trả về chính xác lượng Calo (kcal), Protein (g), Chất béo/Fat (g), và Carbohydrates/Carbs (g) cho mỗi khẩu phần ăn của món đề xuất dựa trên các nguyên liệu được sử dụng. Ước lượng phải thực tế (ví dụ: trứng và thịt có chứa đạm và chất béo; bí đỏ, xoài, gạo có chứa carbs; dầu bơ có béo). TUYỆT ĐỐI không trả về 0 cho tất cả chỉ số.
 
 ĐỊNH DẠNG ĐẦU RA BẮT BUỘC:
 Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệu markdown \`\`\`json). Cấu trúc JSON bắt buộc như sau:
@@ -313,6 +315,10 @@ Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệ
       "user_ingredients_used": ["Trứng", "Hành lá"],
       "missing_ingredients": [],
       "cooking_time_minutes": 15,
+      "calories": 250,
+      "protein_g": 18,
+      "fat_g": 15,
+      "carbs_g": 2,
       "brief_steps": [
         "Bước 1: ...",
         "Bước 2: ..."
@@ -326,7 +332,7 @@ Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệ
     [Local_DB_Suggestions]: ${JSON.stringify(localSuggestions.slice(0, 3))}
     [User_Allergies]: ${JSON.stringify(allergies)}
     [User_Dietary_Preferences]: ${JSON.stringify(dietaryPreferences)}
-    [User_Health_Goal]: ${healthGoal === "lose_weight" ? "Giảm cân (lose_weight) - ưu tiên món ít calo, ít béo" : healthGoal === "gain_weight" ? "Tăng cân (gain_weight) - ưu tiên món giàu calo, protein" : "Cân bằng dinh dưỡng (balanced)"}
+    [User_Health_Goal]: ${healthGoal}
   `;
 
   // Using gemini-flash-latest to automatically route to the best available model and avoid rate limits on specific versions
@@ -363,7 +369,10 @@ Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệ
     return {
       title: s.dish_name + (s.type === 'Biến tấu từ DB' ? ' (Biến tấu)' : ''),
       cookTime: s.cooking_time_minutes,
-      calories: Math.floor(Math.random() * 200) + 200, // Dummy calories
+      calories: Number(s.calories) || 0,
+      protein: Number(s.protein_g) || 0,
+      fat: Number(s.fat_g) || 0,
+      carbs: Number(s.carbs_g) || 0,
       difficulty: "Vừa",
       image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400",
       steps: s.brief_steps.map((step, idx) => ({
@@ -389,6 +398,9 @@ const saveNewRecipesToDB = async (recipes, userId) => {
           title: r.title,
           cookTime: r.cookTime,
           calories: r.calories,
+          protein: r.protein || 0,
+          fat: r.fat || 0,
+          carbs: r.carbs || 0,
           difficulty: r.difficulty,
           image: r.image,
           steps: r.steps,

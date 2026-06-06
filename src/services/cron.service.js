@@ -9,9 +9,9 @@ const runExpiryCheck = async () => {
     const now = new Date();
     const fortyEightHoursLater = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
-    // Tìm tất cả thực phẩm hết hạn hoặc sắp hết hạn trong 48h
+    // Tìm tất cả thực phẩm hết hạn hoặc sắp hết hạn trong 48h (loại trừ các giá trị null)
     const expiringItems = await Pantry.find({
-      expiryDate: { $lte: fortyEightHoursLater }
+      expiryDate: { $ne: null, $lte: fortyEightHoursLater }
     }).populate("user");
 
     if (expiringItems.length === 0) {

@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth.middleware");
 const Notification = require("../models/Notification");
-const asyncHandler = require("../utils/asyncHandler");
+const { asyncHandler } = require("../utils/asyncHandler");
 
 router.use(authMiddleware);
 

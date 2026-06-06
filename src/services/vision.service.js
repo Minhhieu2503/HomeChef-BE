@@ -32,6 +32,26 @@ Quy tắc:
 
 CHỈ trả về JSON nguyên gốc, không dùng markdown code block, không giải thích thêm.`;
 
+// Prompt dành riêng cho việc nhận diện hóa đơn/bill đi chợ
+const BILL_PROMPT = `Hãy nhận diện tất cả các mặt hàng thực phẩm từ hình ảnh hóa đơn/receipt mua sắm này.
+Với mỗi mặt hàng thực phẩm tìm thấy, trích xuất tên nguyên liệu, số lượng mua, đơn vị, và ước lượng số ngày bảo quản.
+
+Trả về kết quả dưới dạng JSON với format chính xác sau:
+{
+  "ingredients": [
+    {"name": "Tên tiếng Việt", "quantity": 1, "unit": "đơn vị phù hợp", "emoji": "emoji phù hợp", "category": "Danh mục", "shelfLifeDays": 7}
+  ]
+}
+
+Quy tắc:
+- "name": Tên nguyên liệu bằng TIẾNG VIỆT (ví dụ: "Sữa tươi", "Trứng gà", "Cà chua"). Bỏ qua hoàn toàn các mặt hàng tiêu dùng không ăn được (ví dụ: bột giặt, giấy vệ sinh).
+- "unit": Đơn vị phù hợp (quả, cái, hộp, chai, lon, kg, g, túi, gói, bịch, lít, ml)
+- "emoji": Emoji phù hợp với từng nguyên liệu
+- "category": Một trong các danh mục: "Rau củ", "Trái cây", "Thịt", "Hải sản", "Gia vị", "Sữa & Trứng", "Ngũ cốc", "Đồ uống", "Đồ hộp", "Khác"
+- "shelfLifeDays": Ước lượng số ngày bảo quản an toàn trong tủ lạnh (thịt tươi/hải sản: 3, rau củ: 7, sữa/trứng: 10, đồ khô/gia vị: 30)
+
+CHỈ trả về JSON nguyên gốc, không dùng markdown code block, không giải thích thêm.`;
+
 // Bảng dịch Anh -> Việt + emoji cho Cloud Vision fallback
 const TRANSLATION_MAP = {
   // Rau củ
@@ -126,11 +146,13 @@ const translateToVietnamese = (englishName) => {
   return { name: englishName, emoji: "🥘", category: "Khác", unit: "cái" };
 };
 
-const detectLabels = async (imageBuffer) => {
+const detectLabels = async (imageBuffer, type = "fridge") => {
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
   const VISION_KEY = process.env.VISION_API_KEY || GEMINI_KEY;
 
   if (!GEMINI_KEY) throw new Error("GEMINI_API_KEY is missing in environment variables");
+
+  const promptText = type === "bill" ? BILL_PROMPT : GEMINI_PROMPT;
 
   const tryAIs = [
     // 1. Gemini 3.5 Flash (Newest, stable)
@@ -138,7 +160,7 @@ const detectLabels = async (imageBuffer) => {
       name: "Gemini 3.5 Flash",
       url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
-        contents: [{ parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
+        contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),
       parser: (data) => {
         if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 3.5 Flash returned empty content");
@@ -152,7 +174,7 @@ const detectLabels = async (imageBuffer) => {
       name: "Gemini Flash Latest",
       url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
-        contents: [{ parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
+        contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),
       parser: (data) => {
         if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini Flash Latest returned empty content");
@@ -166,7 +188,7 @@ const detectLabels = async (imageBuffer) => {
       name: "Gemini 2.5 Flash",
       url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
-        contents: [{ parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
+        contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),
       parser: (data) => {
         if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 2.5 Flash returned empty content");
@@ -180,7 +202,7 @@ const detectLabels = async (imageBuffer) => {
       name: "Gemini 2.0 Flash",
       url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
-        contents: [{ parts: [{ text: GEMINI_PROMPT }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
+        contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),
       parser: (data) => {
         if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 2.0 Flash returned empty content");
@@ -247,7 +269,7 @@ const detectLabels = async (imageBuffer) => {
 
       const result = ai.parser(data);
       console.log(`[AI] ${ai.name} thành công!`);
-      return { type: "food_image", ...result };
+      return { type, ...result };
     } catch (error) {
       console.warn(`[AI] ${ai.name} thất bại:`, error.message);
       errors.push(`${ai.name}: ${error.message}`);

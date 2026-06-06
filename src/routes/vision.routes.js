@@ -27,16 +27,41 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    if (!user.isPremium && user.premiumUsageCount >= user.premiumLimit) {
-      return res.status(403).json({ 
-        success: false, 
-        message: "Bạn đã hết lượt dùng thử tính năng cao cấp. Vui lòng nâng cấp tài khoản!",
-        limitReached: true
+    const scanType = req.body.type || "fridge"; // "fridge" or "bill"
+
+    // Enforce bill/receipt scanning limit (Premium only)
+    if (scanType === "bill" && !user.isPremium) {
+      return res.status(403).json({
+        success: false,
+        message: "Tính năng quét hóa đơn chỉ dành cho tài khoản Premium. Vui lòng nâng cấp!",
+        premiumRequired: true
       });
     }
 
+    // Enforce 3 scans per week limit for Free tier
+    if (!user.isPremium) {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const recentScans = (user.scanHistory || []).filter(date => new Date(date) >= sevenDaysAgo);
+
+      if (recentScans.length >= 3) {
+        return res.status(403).json({
+          success: false,
+          message: "Bạn đã dùng hết giới hạn 3 lượt quét miễn phí trong tuần này. Vui lòng nâng cấp Premium để quét không giới hạn!",
+          limitReached: true
+        });
+      }
+
+      // Record this scan
+      user.scanHistory = [...recentScans, new Date()];
+      user.premiumUsageCount += 1;
+      await user.save();
+    } else {
+      user.scanHistory = [...(user.scanHistory || []), new Date()];
+      await user.save();
+    }
+
     // 1. Detect ingredients via AI
-    const result = await visionService.detectLabels(req.file.buffer);
+    const result = await visionService.detectLabels(req.file.buffer, scanType);
     
     // 2. Automatically add to Pantry if requested (or just return results)
     const savedItems = [];
@@ -122,11 +147,8 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
       }
     }
 
-    // --- Increment Usage ---
-    if (!user.isPremium) {
-      user.premiumUsageCount += 1;
-      await user.save();
-    }
+    // Usage limit has already been validated and incremented before processing scan
+
 
     // 3. Get Recommendations using Hybrid Logic
     const recipeService = require("../services/recipe.service");

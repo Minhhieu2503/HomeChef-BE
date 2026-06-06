@@ -1,4 +1,6 @@
 const Recipe = require("../models/Recipe");
+const User = require("../models/User");
+
 
 const getAll = async (query = {}) => {
   const { page = 1, limit = 10, category, search } = query;
@@ -129,7 +131,7 @@ const getRecommendations = async (userId) => {
   const pantryItems = await Pantry.find(filter);
   if (pantryItems.length === 0) return [];
 
-  // Get user details for allergies and dietary preferences
+  // Get user details for allergies, dietary preferences and health goal
   const User = require("../models/User");
   let user = null;
   if (userId) {
@@ -137,6 +139,7 @@ const getRecommendations = async (userId) => {
   }
   const allergies = user?.allergies || [];
   const dietaryPreferences = user?.dietaryPreferences || [];
+  const healthGoal = user?.healthGoal || "balanced";
 
   // Get a pool of recipes
   const allRecipes = await Recipe.find().limit(200);
@@ -203,10 +206,31 @@ const getRecommendations = async (userId) => {
   });
 
   // Lọc chỉ giữ lại những món mà tủ lạnh có đủ 100% nguyên liệu (không thiếu nguyên liệu nào)
-  // Sau đó sắp xếp ưu tiên những món tận dụng được nhiều nguyên liệu nhất
+  // Sau đó sắp xếp ưu tiên những món tận dụng được nhiều nguyên liệu nhất và phù hợp với mục tiêu sức khỏe
   return scoredRecipes
     .filter(r => r.matchCount > 0 && r.missingIngredients.length === 0)
-    .sort((a, b) => b.matchCount - a.matchCount);
+    .sort((a, b) => {
+      // Sắp xếp ưu tiên 1: Số lượng nguyên liệu khớp (nhiều hơn lên trước)
+      if (b.matchCount !== a.matchCount) {
+        return b.matchCount - a.matchCount;
+      }
+      
+      // Sắp xếp ưu tiên 2: Phù hợp với mục tiêu sức khỏe (healthGoal)
+      if (healthGoal === "lose_weight") {
+        // Giảm cân: Ưu tiên món ít Calo
+        return (a.calories || 0) - (b.calories || 0);
+      } else if (healthGoal === "gain_weight") {
+        // Tăng cân: Ưu tiên món giàu Calo và nhiều Protein
+        if (b.calories !== a.calories) {
+          return (b.calories || 0) - (a.calories || 0);
+        }
+        return (b.protein || 0) - (a.protein || 0);
+      } else {
+        // Cân bằng: Ưu tiên món có hàm lượng Calo trung bình (khoảng 400-600 kcal)
+        const getDeviation = (r) => Math.abs((r.calories || 500) - 500);
+        return getDeviation(a) - getDeviation(b);
+      }
+    });
 };
 
 
@@ -257,6 +281,7 @@ const getHybridSuggestions = async (userIngredients, localSuggestions, userId) =
   }
   const allergies = user?.allergies || [];
   const dietaryPreferences = user?.dietaryPreferences || [];
+  const healthGoal = user?.healthGoal || "balanced";
 
   const systemPrompt = `Bạn là kiến trúc sư ẩm thực và là backend AI của ứng dụng "HomeChef". Nhiệm vụ của bạn là giải quyết bài toán gợi ý món ăn khi Database cục bộ không có đủ món ăn khớp hoàn toàn với nguyên liệu của người dùng.
 
@@ -265,6 +290,10 @@ THÔNG TIN ĐẦU VÀO CỦA BẠN:
 2. [Local_DB_Suggestions]: Các món ăn tìm được trong DB hiện tại (đang bị thiếu nhiều nguyên liệu hoặc độ khớp thấp).
 3. [User_Allergies]: Danh sách các chất/nguyên liệu người dùng bị dị ứng. TUYỆT ĐỐI không được sử dụng bất cứ nguyên liệu nào chứa các chất này trong công thức gợi ý.
 4. [User_Dietary_Preferences]: Chế độ ăn uống ưu tiên của người dùng (ví dụ: Ăn chay, Keto, ít dầu mỡ...). Hãy đảm bảo toàn bộ công thức tuân thủ đúng chế độ ăn này.
+5. [User_Health_Goal]: Mục tiêu sức khỏe/cân nặng của người dùng:
+   - "giảm cân" (lose_weight): Ưu tiên gợi ý các món ít calo, ít chất béo, nhiều xơ và lành mạnh.
+   - "tăng cân" (gain_weight): Ưu tiên gợi ý các món giàu calo, giàu protein, bổ dưỡng.
+   - "cân bằng" (balanced): Đề xuất các món ăn có hàm lượng dinh dưỡng cân bằng thông thường.
 
 QUY TẮC SUY LUẬN & TỐI ƯU HÓA:
 - Ưu tiên 1 ("Nấu Ngay"): Tìm các món ăn sử dụng TỐI ĐA các nguyên liệu trong [User_Ingredients]. Chỉ chấp nhận bổ sung các gia vị cơ bản có sẵn ở mọi gian bếp.
@@ -297,6 +326,7 @@ Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệ
     [Local_DB_Suggestions]: ${JSON.stringify(localSuggestions.slice(0, 3))}
     [User_Allergies]: ${JSON.stringify(allergies)}
     [User_Dietary_Preferences]: ${JSON.stringify(dietaryPreferences)}
+    [User_Health_Goal]: ${healthGoal === "lose_weight" ? "Giảm cân (lose_weight) - ưu tiên món ít calo, ít béo" : healthGoal === "gain_weight" ? "Tăng cân (gain_weight) - ưu tiên món giàu calo, protein" : "Cân bằng dinh dưỡng (balanced)"}
   `;
 
   // Using gemini-flash-latest to automatically route to the best available model and avoid rate limits on specific versions

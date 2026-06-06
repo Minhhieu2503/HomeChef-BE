@@ -1,9 +1,13 @@
 const MealPlan = require("../models/MealPlan");
 const Shopping = require("../models/Shopping");
+const User = require("../models/User");
 
 exports.getOverview = async (req, res, next) => {
   try {
     const userId = req.userId;
+    const user = await User.findById(userId);
+    const calorieGoal = user?.calorieGoal || 2000;
+    
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -37,11 +41,11 @@ exports.getOverview = async (req, res, next) => {
         nutrition: {
           calories: {
             current: totalCalories,
-            goal: 2000
+            goal: calorieGoal
           },
           protein: {
             current: totalProtein,
-            goal: 80
+            goal: Math.round(calorieGoal * 0.04) // Estimate protein goal based on calories (e.g. 80g for 2000kcal)
           }
         },
         groceries: recentGroceries

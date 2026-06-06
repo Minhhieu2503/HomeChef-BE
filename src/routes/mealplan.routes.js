@@ -7,6 +7,7 @@ const authMiddleware = require("../middleware/auth.middleware");
 router.use(authMiddleware);
 
 router.get("/", mealPlanController.getByDateRange);
+router.post("/generate-ai", mealPlanController.generateAIMealPlan);
 router.post("/", mealPlanController.assignMeal);
 router.delete("/:id", mealPlanController.removeMeal);
 

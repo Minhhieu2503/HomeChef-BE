@@ -137,10 +137,13 @@ Trả về kết quả dưới dạng chuỗi JSON nguyên gốc, không kèm k�
         calories: meal.calories || 300,
         protein: meal.protein || 15,
         cookTime: meal.cookTime || 20,
-        ingredients: meal.ingredientsUsed.map(name => ({ name, quantity: 1, unit: "phần" })),
-        instructions: ["Chuẩn bị nguyên liệu.", "Chế biến theo hướng dẫn của HomeChef.", "Thưởng thức món ăn cùng gia đình."],
-        isCustom: true,
-        creator: userId
+        ingredients: meal.ingredientsUsed.map(name => ({ name, quantity: "1 phần" })),
+        steps: [
+          { order: 1, instruction: "Chuẩn bị nguyên liệu." },
+          { order: 2, instruction: "Chế biến theo hướng dẫn của HomeChef." },
+          { order: 3, instruction: "Thưởng thức món ăn cùng gia đình." }
+        ],
+        author: userId
       });
     }
 

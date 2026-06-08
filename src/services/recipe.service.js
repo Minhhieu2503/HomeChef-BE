@@ -335,24 +335,53 @@ Chỉ trả về duy nhất một chuỗi JSON hợp lệ (không kèm ký hiệ
     [User_Health_Goal]: ${healthGoal}
   `;
 
-  // Using gemini-flash-latest to automatically route to the best available model and avoid rate limits on specific versions
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`;
-  const body = {
-    system_instruction: { parts: [{ text: systemPrompt }] },
-    contents: [{ parts: [{ text: userPrompt }] }]
-  };
+  const MODELS_TO_TRY = [
+    "gemini-2.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-3.5-flash"
+  ];
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  let data = null;
+  let lastError = null;
 
-  const data = await response.json();
-  if (data.error) throw new Error(`Gemini Hybrid lỗi: ${data.error.message}`);
+  for (const model of MODELS_TO_TRY) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
+      const body = {
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: userPrompt }] }]
+      };
 
-  let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Gemini returned empty content");
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      data = await response.json();
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        lastError = null;
+        break;
+      } else {
+        throw new Error("Empty content returned from Gemini");
+      }
+    } catch (err) {
+      console.warn(`[Gemini Fallback] Model ${model} failed in Recipe Suggestion:`, err.message);
+      lastError = err;
+    }
+  }
+
+  if (lastError) {
+    throw new Error(`Gemini Hybrid lỗi: ${lastError.message}`);
+  }
+
+  let text = data.candidates[0].content.parts[0].text;
   
   // Clean markdown block if present
   text = text.replace(/```json/g, '').replace(/```/g, '').trim();

@@ -89,23 +89,53 @@ Trả về kết quả dưới dạng chuỗi JSON nguyên gốc, không kèm k�
 
   const userPrompt = `Hãy tạo kế hoạch ăn uống cho ${peopleCount} người trong ${daysCount} ngày dựa trên thông tin trên.`;
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`;
-  const body = {
-    system_instruction: { parts: [{ text: systemPrompt }] },
-    contents: [{ parts: [{ text: userPrompt }] }]
-  };
+  const MODELS_TO_TRY = [
+    "gemini-2.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-flash-latest",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-3.5-flash"
+  ];
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
+  let data = null;
+  let lastError = null;
 
-  const data = await response.json();
-  if (data.error) throw new Error(`Gemini AI Meal Planner error: ${data.error.message}`);
+  for (const model of MODELS_TO_TRY) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
+      const body = {
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: userPrompt }] }]
+      };
 
-  let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Gemini returned empty response for meal planner");
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+
+      data = await response.json();
+      if (data.error) {
+        throw new Error(data.error.message);
+      }
+      if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
+        lastError = null;
+        break;
+      } else {
+        throw new Error("Empty content returned from Gemini");
+      }
+    } catch (err) {
+      console.warn(`[Gemini Fallback] Model ${model} failed in Meal Planner:`, err.message);
+      lastError = err;
+    }
+  }
+
+  if (lastError) {
+    throw new Error(`Gemini AI Meal Planner error: ${lastError.message}`);
+  }
+
+  let text = data.candidates[0].content.parts[0].text;
 
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("Could not parse JSON from Gemini response");

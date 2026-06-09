@@ -26,4 +26,7 @@ router.delete("/recipes/:id", adminController.deleteRecipe);
 // Payment management
 router.get("/payments", adminController.getAllTransactions);
 
+// Access logs
+router.get("/logs", adminController.getAccessLogs);
+
 module.exports = router;

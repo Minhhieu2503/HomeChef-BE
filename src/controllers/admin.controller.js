@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Recipe = require("../models/Recipe");
 const Transaction = require("../models/Transaction");
+const AccessLog = require("../models/AccessLog");
 
 /**
  * @desc    Get dashboard stats
@@ -210,6 +211,36 @@ const getAllTransactions = async (req, res, next) => {
   }
 };
 
+// Get access logs
+const getAccessLogs = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 100;
+    const skip = (page - 1) * limit;
+
+    const logs = await AccessLog.find()
+      .populate("user", "name email role")
+      .sort("-timestamp")
+      .skip(skip)
+      .limit(limit);
+
+    const total = await AccessLog.countDocuments();
+
+    res.json({
+      success: true,
+      data: logs,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getStats,
   getAllUsers,
@@ -221,5 +252,6 @@ module.exports = {
   deleteRecipe,
   updateRecipe,
   createRecipe,
-  getAllTransactions
+  getAllTransactions,
+  getAccessLogs
 };

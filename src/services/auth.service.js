@@ -255,7 +255,7 @@ const toggleSavedRecipe = async (userId, recipeId) => {
   if (index > -1) {
     user.savedRecipes.splice(index, 1);
   } else {
-    if (user.plan === 'free' && user.savedRecipes.length >= 10) {
+    if (!user.isPremium && user.savedRecipes.length >= 10) {
       const error = new Error("Tài khoản Miễn Phí chỉ được lưu tối đa 10 công thức. Vui lòng nâng cấp Premium để lưu không giới hạn.");
       error.statusCode = 403;
       throw error;

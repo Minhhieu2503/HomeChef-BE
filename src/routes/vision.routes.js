@@ -184,7 +184,7 @@ router.post("/scan", authMiddleware, upload.single("image"), async (req, res, ne
       type: result.type,
       data: savedItems,
       recipes: finalRecipes, // Instant suggestions or AI generated
-      usageLeft: user.isPremium ? 'Unlimited' : (user.premiumLimit - user.premiumUsageCount)
+      usageLeft: user.isPremium ? 'Unlimited' : Math.max(0, user.premiumLimit - (user.scanHistory || []).length)
     });
   } catch (error) {
     console.error("Vision API Error:", error);

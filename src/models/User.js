@@ -94,7 +94,7 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.virtual('isPremium').get(function() {
-  return this.plan === 'premium' || this.plan === 'family';
+  return this.plan === 'premium' || this.plan === 'family' || !!this.familyId;
 });
 
 module.exports = mongoose.model("User", userSchema);

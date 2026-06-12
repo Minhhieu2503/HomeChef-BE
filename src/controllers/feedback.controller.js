@@ -8,20 +8,26 @@ const User = require("../models/User");
  */
 const createFeedback = async (req, res, next) => {
   try {
-    const { type, rating, comment } = req.body;
+    const { type, ratingUI, ratingSpeed, ratingContent, comment } = req.body;
     const userId = req.userId;
 
-    if (!rating || !comment) {
-      const error = new Error("Đánh giá sao và nội dung góp ý là bắt buộc.");
+    if (!ratingUI || !ratingSpeed || !ratingContent || !comment) {
+      const error = new Error("Vui lòng đánh giá đầy đủ các mục và nhập ý kiến đóng góp.");
       error.statusCode = 400;
       throw error;
     }
+
+    // Calculate average rating (rounded to nearest integer)
+    const rating = Math.round((Number(ratingUI) + Number(ratingSpeed) + Number(ratingContent)) / 3);
 
     // Create feedback
     const feedback = await Feedback.create({
       user: userId,
       type: type || "general",
       rating,
+      ratingUI: Number(ratingUI),
+      ratingSpeed: Number(ratingSpeed),
+      ratingContent: Number(ratingContent),
       comment,
     });
 

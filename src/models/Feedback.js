@@ -18,6 +18,18 @@ const feedbackSchema = new mongoose.Schema(
       min: 1,
       max: 5,
     },
+    ratingUI: {
+      type: Number,
+      default: 0
+    },
+    ratingSpeed: {
+      type: Number,
+      default: 0
+    },
+    ratingContent: {
+      type: Number,
+      default: 0
+    },
     comment: {
       type: String,
       required: true,

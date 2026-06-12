@@ -69,13 +69,33 @@ const getStats = async (req, res, next) => {
 };
 
 /**
- * @desc    Get all users
+ * @desc    Get all users (with pagination)
  * @route   GET /api/admin/users
  */
 const getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find().select("-password").sort("-createdAt");
-    res.json({ success: true, data: users });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const users = await User.find()
+      .select("-password")
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(limit);
+
+    const total = await User.countDocuments();
+
+    res.json({ 
+      success: true, 
+      data: users,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     next(error);
   }

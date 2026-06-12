@@ -226,9 +226,26 @@ const getAccessLogs = async (req, res, next) => {
 
     const total = await AccessLog.countDocuments();
 
+    // Calculate global statistics
+    const totalUniqueIps = (await AccessLog.distinct("ipAddress")).length;
+    const activeUsersCount = (await AccessLog.distinct("user", { user: { $ne: null } })).length;
+    const uniqueGuestIps = (await AccessLog.distinct("ipAddress", { user: null })).length;
+    const totalGuestClicks = await AccessLog.countDocuments({ user: null });
+    const totalAuthClicks = await AccessLog.countDocuments({ user: { $ne: null } });
+    const totalRegisteredUsers = await User.countDocuments();
+
     res.json({
       success: true,
       data: logs,
+      stats: {
+        uniqueIps: totalUniqueIps,
+        activeUsers: activeUsersCount,
+        uniqueGuests: uniqueGuestIps,
+        guestClicks: totalGuestClicks,
+        authClicks: totalAuthClicks,
+        totalRegisteredUsers,
+        totalLogs: total
+      },
       pagination: {
         total,
         page,

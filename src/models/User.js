@@ -85,6 +85,10 @@ const userSchema = new mongoose.Schema(
       type: [Date],
       default: []
     },
+    hasGivenFeedback: {
+      type: Boolean,
+      default: false
+    },
   },
   {
     timestamps: true,

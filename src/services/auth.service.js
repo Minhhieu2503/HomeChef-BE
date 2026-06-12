@@ -33,7 +33,7 @@ const register = async (userData) => {
   const token = jwtUtils.generateToken({ id: user._id });
 
   return {
-    user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
+    user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, hasGivenFeedback: user.hasGivenFeedback, completedMealsCount: user.completedMealsCount },
     token,
   };
 };
@@ -58,7 +58,7 @@ const login = async ({ email, password }) => {
   const token = jwtUtils.generateToken({ id: user._id });
 
   return {
-    user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
+    user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, hasGivenFeedback: user.hasGivenFeedback, completedMealsCount: user.completedMealsCount },
     token,
   };
 };
@@ -232,7 +232,7 @@ const googleLogin = async (idToken) => {
     const token = jwtUtils.generateToken({ id: user._id });
 
     return {
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar },
+      user: { id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, hasGivenFeedback: user.hasGivenFeedback, completedMealsCount: user.completedMealsCount },
       token,
     };
   } catch (err) {

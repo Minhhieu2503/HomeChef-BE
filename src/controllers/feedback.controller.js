@@ -8,7 +8,7 @@ const User = require("../models/User");
  */
 const createFeedback = async (req, res, next) => {
   try {
-    const { type, ratingUI, ratingSpeed, ratingContent, comment } = req.body;
+    const { type, ratingUI, ratingSpeed, ratingContent, comment, agreeUpgradePremium } = req.body;
     const userId = req.userId;
 
     if (!ratingUI || !ratingSpeed || !ratingContent || !comment) {
@@ -29,6 +29,7 @@ const createFeedback = async (req, res, next) => {
       ratingSpeed: Number(ratingSpeed),
       ratingContent: Number(ratingContent),
       comment,
+      agreeUpgradePremium: agreeUpgradePremium || "",
     });
 
     // Update user hasGivenFeedback status

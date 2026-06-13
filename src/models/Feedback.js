@@ -40,6 +40,11 @@ const feedbackSchema = new mongoose.Schema(
       enum: ["pending", "reviewed", "resolved"],
       default: "pending",
     },
+    agreeUpgradePremium: {
+      type: String,
+      enum: ["yes", "no", ""],
+      default: "",
+    },
   },
   {
     timestamps: true,

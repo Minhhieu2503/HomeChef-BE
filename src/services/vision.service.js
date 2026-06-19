@@ -169,17 +169,17 @@ const detectLabels = async (imageBuffer, type = "fridge") => {
         return JSON.parse(match[0]);
       }
     },
-    // 2. Gemini 2.0 Flash Experimental
+    // 2. Gemini 2.0 Flash Lite (nhẹ hơn, ít quota hơn)
     {
-      name: "Gemini 2.0 Flash Exp",
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_KEY}`,
+      name: "Gemini 2.0 Flash Lite",
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
         contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),
       parser: (data) => {
-        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 2.0 Flash Exp returned empty content");
+        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 2.0 Flash Lite returned empty content");
         const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error("Could not parse JSON from Gemini 2.0 Flash Exp response");
+        if (!match) throw new Error("Could not parse JSON from Gemini 2.0 Flash Lite response");
         return JSON.parse(match[0]);
       }
     },
@@ -200,7 +200,7 @@ const detectLabels = async (imageBuffer, type = "fridge") => {
     // 4. Gemini 1.5 Flash (ổn định, hỗ trợ free tier tốt)
     {
       name: "Gemini 1.5 Flash",
-      url: `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
         contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),

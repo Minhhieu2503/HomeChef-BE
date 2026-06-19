@@ -155,38 +155,10 @@ const detectLabels = async (imageBuffer, type = "fridge") => {
   const promptText = type === "bill" ? BILL_PROMPT : GEMINI_PROMPT;
 
   const tryAIs = [
-    // 1. Gemini 3.5 Flash (Newest, stable)
-    {
-      name: "Gemini 3.5 Flash",
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_KEY}`,
-      getBody: (base64) => ({
-        contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
-      }),
-      parser: (data) => {
-        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 3.5 Flash returned empty content");
-        const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error("Could not parse JSON from Gemini 3.5 Flash response");
-        return JSON.parse(match[0]);
-      }
-    },
-    // 2. Gemini Flash Latest (Auto-routing)
-    {
-      name: "Gemini Flash Latest",
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
-      getBody: (base64) => ({
-        contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
-      }),
-      parser: (data) => {
-        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini Flash Latest returned empty content");
-        const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error("Could not parse JSON from Gemini Flash Latest response");
-        return JSON.parse(match[0]);
-      }
-    },
-    // 3. Gemini 2.5 Flash
+    // 1. Gemini 2.5 Flash Preview (Mới nhất, hỗ trợ vision tốt nhất)
     {
       name: "Gemini 2.5 Flash",
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
         contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),
@@ -197,7 +169,21 @@ const detectLabels = async (imageBuffer, type = "fridge") => {
         return JSON.parse(match[0]);
       }
     },
-    // 4. Gemini 2.0 Flash
+    // 2. Gemini 2.0 Flash Experimental
+    {
+      name: "Gemini 2.0 Flash Exp",
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_KEY}`,
+      getBody: (base64) => ({
+        contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
+      }),
+      parser: (data) => {
+        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 2.0 Flash Exp returned empty content");
+        const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("Could not parse JSON from Gemini 2.0 Flash Exp response");
+        return JSON.parse(match[0]);
+      }
+    },
+    // 3. Gemini 2.0 Flash (stable)
     {
       name: "Gemini 2.0 Flash",
       url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
@@ -211,7 +197,21 @@ const detectLabels = async (imageBuffer, type = "fridge") => {
         return JSON.parse(match[0]);
       }
     },
-    // 3. Cloud Vision (uses separate VISION_API_KEY if available) + dịch sang tiếng Việt
+    // 4. Gemini 1.5 Flash (ổn định, hỗ trợ free tier tốt)
+    {
+      name: "Gemini 1.5 Flash",
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      getBody: (base64) => ({
+        contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
+      }),
+      parser: (data) => {
+        if (!data.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("Gemini 1.5 Flash returned empty content");
+        const match = data.candidates[0].content.parts[0].text.match(/\{[\s\S]*\}/);
+        if (!match) throw new Error("Could not parse JSON from Gemini 1.5 Flash response");
+        return JSON.parse(match[0]);
+      }
+    },
+    // 5. Cloud Vision (uses separate VISION_API_KEY if available) + dịch sang tiếng Việt
     {
       name: "Cloud Vision",
       url: `https://vision.googleapis.com/v1/images:annotate?key=${VISION_KEY}`,

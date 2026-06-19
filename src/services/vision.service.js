@@ -155,10 +155,10 @@ const detectLabels = async (imageBuffer, type = "fridge") => {
   const promptText = type === "bill" ? BILL_PROMPT : GEMINI_PROMPT;
 
   const tryAIs = [
-    // 1. Gemini 2.5 Flash Preview (Mới nhất, hỗ trợ vision tốt nhất)
+    // 1. Gemini 2.5 Flash (Mới nhất, hỗ trợ vision tốt nhất)
     {
       name: "Gemini 2.5 Flash",
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GEMINI_KEY}`,
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
         contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),
@@ -186,7 +186,7 @@ const detectLabels = async (imageBuffer, type = "fridge") => {
     // 3. Gemini 2.0 Flash (stable)
     {
       name: "Gemini 2.0 Flash",
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      url: `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
         contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),
@@ -200,7 +200,7 @@ const detectLabels = async (imageBuffer, type = "fridge") => {
     // 4. Gemini 1.5 Flash (ổn định, hỗ trợ free tier tốt)
     {
       name: "Gemini 1.5 Flash",
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      url: `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
       getBody: (base64) => ({
         contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: "image/jpeg", data: base64 } }] }]
       }),
